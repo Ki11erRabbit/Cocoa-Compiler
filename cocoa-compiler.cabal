@@ -1,0 +1,86 @@
+cabal-version:       2.2
+
+name:                cocoa-compiler
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/cocoa-compiler#readme
+license-file:        LICENSE
+author:              Alec Davis
+maintainer:          unlikelytitan@gmail.com
+copyright:           2024 Alec Davis
+category:            Development
+build-type:          Simple
+extra-source-files:  README.md
+                     CHANGELOG.md
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Ast
+                     , Parser
+  build-depends:       base >= 4.7 && < 5
+                     , megaparsec
+                     , parser-combinators
+                     , text
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable cocoa-compiler
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  build-depends:       base
+                     , cocoa-compiler
+                     , megaparsec
+                     , parser-combinators
+                     , text
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+                       -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+
+test-suite cocoa-compiler-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  other-modules:       Data.String.StripSpec
+  build-depends:       base
+                     , cocoa-compiler
+                     , hspec
+                     , QuickCheck
+                     , megaparsec
+                     , parser-combinators
+                     , hspec-megaparsec
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+                       -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+
+source-repository head
+  type:     git
+  location: https://github.com/githubuser/cocoa-compiler
