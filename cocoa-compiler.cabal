@@ -70,7 +70,7 @@ test-suite cocoa-compiler-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       ParserSpec
+  other-modules:       Compiler.Parser.Expr.OpsSpec
   build-depends:       base
                      , cocoa-compiler
                      , hspec
