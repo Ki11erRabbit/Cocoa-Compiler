@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Parser where
+module Simple where
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -127,3 +127,5 @@ myidentifier = do
       "true" -> fail "true is a reserved keyword"
       "false" -> fail "false is a reserved keyword"
       _ -> return id
+
+

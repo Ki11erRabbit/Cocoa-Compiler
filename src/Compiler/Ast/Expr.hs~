@@ -1,0 +1,31 @@
+module Expr where
+
+data Expr =
+    BinaryOp BinaryOp Expr Expr
+  | UnaryOp UnaryOp Expr
+  | Call Expr [Expr]
+  | NewExpr Path [Expr]
+  | Var String
+  | FieldAccess Expr String
+  | ArrayAccess Expr Expr
+  | ArrayLiteral [Expr]
+  | Literal Literal
+  | StaticAccess Path
+  | ThisExpr
+  | SuperExpr
+  | NullExpr
+  | Cast Type Expr
+  | InstanceOf Expr Type
+  | Paren Expr
+  | IfExprExpr IfExpr
+  | Closure [Param] [Statement]
+  deriving (Show, Eq)
+
+data BinaryOp = Add | Sub | Mul | Div | Mod | And | Or | Eq | Neq | Lt | Gt | Le | Ge | BitAnd | BitOr | BitXor | LShift | RShift | ExclusiveRangeOp | InclusiveRangeOp | LogicalAnd | LogicalOr
+  deriving (Show, Eq)
+
+data UnaryOp = Neg | NotOp
+  deriving (Show, Eq)
+
+data Literal = IntLit String | FloatLit String | BoolLit Bool | CharLit Char | StringLit String
+  deriving (Show, Eq)

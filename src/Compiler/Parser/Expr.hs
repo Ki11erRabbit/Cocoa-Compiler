@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Parser where
+module Expr where
 
 import Text.Megaparsec
 import Text.Megaparsec.Char

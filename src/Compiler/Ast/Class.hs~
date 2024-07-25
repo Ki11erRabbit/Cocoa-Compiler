@@ -1,0 +1,4 @@
+module Class where
+
+import Shared
+import Method

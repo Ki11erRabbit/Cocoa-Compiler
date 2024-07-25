@@ -1,6 +1,7 @@
 module Main where
 
-import Parser
+import Compiler.Parser.Expr.Ops
+import Compiler.Parser.Expr.Base
 import Text.Megaparsec
 import Text.Megaparsec.Error
 import Data.Text
@@ -10,6 +11,6 @@ import Data.Void (Void)
 main :: IO ()
 main = do
   let input = "!12 + 2 * 4 - 5" in
-    case parse parseExpr "" (pack input) of
+    case parse (parseOp parseBaseExpr) "" (pack input) of
       Left err -> putStrLn $ errorBundlePretty err
       Right expr -> print expr
