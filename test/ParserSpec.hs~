@@ -1,4 +1,4 @@
-module ParserTests where
+module ParserSpec where
 
 import Test.Hspec
 import Test.Hspec.Megaparsec

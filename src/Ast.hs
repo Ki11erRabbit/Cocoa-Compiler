@@ -14,7 +14,7 @@ data ImportAst = ImportAst Path
   deriving (Show)
 
 data Path = Path [String]
-  deriving (Show)
+  deriving (Show, Eq)
 
 data SuperClass = SuperClass Path [TypeParam]
   deriving (Show)
@@ -67,37 +67,37 @@ data MethodBody = Prototype | MethodBody [Statement] | Native String | Redirect 
 data Param = Param
   { paramName :: String
   , paramType :: Type
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 data Type = Primitive PrimitiveType | Array Type | ClassType Path | Arguments Type [Type]
-  deriving (Show)
+  deriving (Show, Eq)
 
 data PrimitiveType = UnitPrimType | U8PrimType | U16PrimType | U32PrimType | U64PrimType | I8PrimType | I16PrimType | I32PrimType | I64PrimType | F32PrimType | F64PrimType | BoolPrimType | CharPrimType
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Statement = WhileStmt WhileStatement | ForStmt ForStatement | IfStmt IfExpr | ReturnStmt ReturnStatement | LetStmt LetStatement | ExprStmt Expr | BreakStmt BreakStatement | ContinueStmt ContinueStatement | Hanging Expr
-  deriving (Show)
+  deriving (Show, Eq)
 
 data WhileStatement = WhileStatement Expr [Statement]
-  deriving (Show)
+  deriving (Show, Eq)
 
 data ForStatement = ForStatement String Expr [Statement]
-  deriving (Show)
+  deriving (Show, Eq)
 
 data ReturnStatement = ReturnExpr Expr | ReturnUnit
-  deriving (Show)
+  deriving (Show, Eq)
 
 data LetStatement = LetStatement String (Maybe Type) Expr
-  deriving (Show)
+  deriving (Show, Eq)
 
 data BreakStatement = BreakStatement
-  deriving (Show)
+  deriving (Show, Eq)
 
 data ContinueStatement = ContinueStatement
-  deriving (Show)
+  deriving (Show, Eq)
 
 data IfExpr = IfExpr Expr [Statement] (Maybe (Either [Statement] IfExpr))
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Expr =
     BinaryOp BinaryOp Expr Expr
@@ -118,16 +118,16 @@ data Expr =
   | Paren Expr
   | IfExprExpr IfExpr
   | Closure [Param] [Statement]
-  deriving (Show)
+  deriving (Show, Eq)
 
 data BinaryOp = Add | Sub | Mul | Div | Mod | And | Or | Eq | Neq | Lt | Gt | Le | Ge | BitAnd | BitOr | BitXor | LShift | RShift | ExclusiveRangeOp | InclusiveRangeOp | LogicalAnd | LogicalOr
-  deriving (Show)
+  deriving (Show, Eq)
 
 data UnaryOp = Neg | NotOp
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Literal = IntLit String | FloatLit String | BoolLit Bool | CharLit Char | StringLit String
-  deriving (Show)
+  deriving (Show, Eq)
 
 
 
