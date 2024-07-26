@@ -1,3 +1,0 @@
-module Compiler.Parser.Expr.Compound where
-
-import Compiler.Parser.Shared

@@ -1,5 +1,0 @@
-module Shared where
-
-
-data Path = Path [String]
-  deriving (Show, Eq)
