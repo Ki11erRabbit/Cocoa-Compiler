@@ -150,14 +150,11 @@ parseCallExpr = try $ do
 
 parseCastExpr :: Parser Expr
 parseCastExpr = do
-  _ <- string "cast"
+  t <- parseType
+  _ <- skipParser
   _ <- char '('
   _ <- skipParser
   expr <- parseExpr
-  _ <- skipParser
-  _ <- char ','
-  _ <- skipParser
-  t <- parseType
   _ <- skipParser
   _ <- char ')'
   _ <- skipParser

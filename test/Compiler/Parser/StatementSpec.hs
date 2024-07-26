@@ -79,7 +79,7 @@ spec = do
       parse parseInstanceofExpr "" "instanceof(a, A)" `shouldParse` InstanceOf (Var "a") (ClassType (Path ["A"]))
   describe "parseCastExpr" $ do
     it "parses a cast expr" $ do
-      parse parseCastExpr "" "cast(a, A)" `shouldParse` Cast (ClassType (Path ["A"])) (Var "a")
+      parse parseCastExpr "" "A(a)" `shouldParse` Cast (ClassType (Path ["A"])) (Var "a")
   describe "Mixed Expressions" $ do
     it "parses a method call" $ do
       parse parseExpr "" "x.call()" `shouldParse` Call (FieldAccess (Var "x") "call") [] 
@@ -96,9 +96,13 @@ spec = do
     it "parses an instanceof expr" $ do
       parse parseExpr "" "instanceof(x, A)" `shouldParse` InstanceOf (Var "x") (ClassType (Path ["A"]))
     it "parses a cast expr" $ do
-      parse parseExpr "" "cast(x, A)" `shouldParse` Cast (ClassType (Path ["A"])) (Var "x")
+      parse parseExpr "" "A(x)" `shouldParse` Cast (ClassType (Path ["A"])) (Var "x")
     it "parses array concat" $ do
       parse parseExpr "" "[1, 2] + [3, 4]" `shouldParse` BinaryOp Add (ArrayLiteral [Literal (IntLit "1"), Literal (IntLit "2")]) (ArrayLiteral [Literal (IntLit "3"), Literal (IntLit "4")])
-    
+    it "parses array concat with a unary operator" $ do
+      parse parseExpr "" "!x + [3, 4]" `shouldParse` BinaryOp Add (UnaryOp NotOp (Var "x")) (ArrayLiteral [Literal (IntLit "3"), Literal (IntLit "4")])
+    it "parses array concat with a unary operator" $ do
+      parse parseExpr "" "[3, 4] + !x" `shouldParse` BinaryOp Add (ArrayLiteral [Literal (IntLit "3"), Literal (IntLit "4")]) (UnaryOp NotOp (Var "x"))
+      
   
   
