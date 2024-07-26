@@ -79,6 +79,26 @@ spec = do
       parse parseInstanceofExpr "" "a instanceof A" `shouldParse` InstanceOf (Var "a") (ClassType (Path ["A"]))
   describe "parseCastExpr" $ do
     it "parses a cast expr" $ do
-      parse parseCastExpr "" "a as A" `shouldParse` Cast (ClassType (Path ["A"])) (Var "a")
+      parse parseCastExpr "" "cast(A,a)" `shouldParse` Cast (ClassType (Path ["A"])) (Var "a")
+  describe "Mixed Expressions" $ do
+    it "parses a method call" $ do
+      parse parseExpr "" "x.call()" `shouldParse` Call (FieldAccess (Var "x") "call") [] 
+    it "parses a method call with arguments" $ do
+      parse parseExpr "" "x.call(1,2)" `shouldParse` Call (FieldAccess (Var "x") "call") [Literal (IntLit "1"), (Literal (IntLit "2"))]
+    it "parses a field access" $ do
+      parse parseExpr "" "x.y" `shouldParse` FieldAccess (Var "x") "y"
+    it "parses an array access" $ do
+      parse parseExpr "" "x[1]" `shouldParse` ArrayAccess (Var "x") (Literal (IntLit "1"))
+    it "parses an array literal" $ do
+      parse parseExpr "" "[1, 2]" `shouldParse` ArrayLiteral [Literal (IntLit "1"), Literal (IntLit "2")]
+    it "parses a paren expr" $ do
+      parse parseExpr "" "(1)" `shouldParse` Paren (Literal (IntLit "1"))
+    it "parses an instanceof expr" $ do
+      parse parseExpr "" "x instanceof A" `shouldParse` InstanceOf (Var "x") (ClassType (Path ["A"]))
+    it "parses a cast expr" $ do
+      parse parseExpr "" "cast(A,x)" `shouldParse` Cast (ClassType (Path ["A"])) (Var "x")
+    it "parses array concat" $ do
+      parse parseExpr "" "[1, 2] + [3, 4]" `shouldParse` BinaryOp Add (ArrayLiteral [Literal (IntLit "1"), Literal (IntLit "2")]) (ArrayLiteral [Literal (IntLit "3"), Literal (IntLit "4")])
+    
   
   

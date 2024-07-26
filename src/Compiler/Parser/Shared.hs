@@ -17,6 +17,20 @@ parsePath = do
     myidentifier
   return $ Path (first : rest)
 
+parseTypePath :: Parser Path
+parseTypePath = do
+  single <|> multiple
+  where
+    single = do
+      first <- myTypeIdentifier
+      return $ Path [first]
+    multiple = do
+      first <- myidentifier <|> myTypeIdentifier
+      rest <- many $ do
+        _ <- char '.'
+        myidentifier
+      last <- myTypeIdentifier
+      return $ Path (first : (rest ++ [last]))
 
 
 skipParser :: Parser ()
@@ -54,7 +68,7 @@ anyChar = satisfy (const True)
 
 myidentifier :: Parser String
 myidentifier = do
-  first <- letterChar <|> char '_'
+  first <- lowerChar <|> char '_'
   rest <- many alphaNumChar
   _ <- skipParser
   let identifier = first : rest in
@@ -65,7 +79,6 @@ myidentifier = do
       "super" -> fail "super is a reserved keyword"
       "null" -> fail "null is a reserved keyword"
       "new" -> fail "new is a reserved keyword"
-      "as" -> fail "as is a reserved keyword"
       "instanceof" -> fail "instanceof is a reserved keyword"
       "u8" -> fail "u8 is a reserved keyword"
       "u16" -> fail "u16 is a reserved keyword"
@@ -80,9 +93,17 @@ myidentifier = do
       "bool" -> fail "bool is a reserved keyword"
       "char" -> fail "char is a reserved keyword"
       "()" -> fail "() is a reserved keyword"
+      "cast" -> fail "cast is a reserved keyword"
       _ -> return identifier
 
 
+myTypeIdentifier :: Parser String
+myTypeIdentifier = do
+  first <- upperChar
+  rest <- many alphaNumChar
+  _ <- skipParser
+  let identifier = first : rest in
+      return identifier
 
 mylexeme :: Parser a -> Parser a
 mylexeme p = do
@@ -128,7 +149,7 @@ parseArrayType = do
 
 parseClassType :: Parser Type
 parseClassType = do
-  path <- parsePath
+  path <- parseTypePath
   _ <- skipParser
   return $ ClassType path
 

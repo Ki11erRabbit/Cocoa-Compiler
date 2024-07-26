@@ -11,28 +11,26 @@ import Debug.Trace(trace)
 
 
 parseExpr :: Parser Expr
-parseExpr = parseNonLeftRecExpr <|> parseLeftRecExpr1 <|> parseLeftRecExpr2 <?> "expression"
+parseExpr = try $ (parseLeftRecExpr1 <|> parseLeftRecExpr2 <|> parseNonLeftRecExpr <?> "expression")
 
 parseNonLeftRecExpr :: Parser Expr
-parseNonLeftRecExpr = parseBaseExpr <|>
+parseNonLeftRecExpr = try $ (parseBaseExpr <|>
   parseArrayExpr <|>
   parseParenExpr <|>
-  parseNewExpr <?> "Parse Non Left Rec Expr"
+  parseCastExpr <|>
+  parseNewExpr <?> "Parse Non Left Rec Expr")
 
 parseLeftRecExpr1 :: Parser Expr
-parseLeftRecExpr1 = (parseOp parseLeftRecExpr2) <|>
-  parseInstanceofExpr
+parseLeftRecExpr1 = try $ (parseInstanceofExpr <|> (parseOp (parseNonLeftRecExpr <|> parseLeftRecExpr2)))
 
 
 parseLeftRecExpr2 :: Parser Expr
-parseLeftRecExpr2 = parseNonLeftRecExpr <|>
-  parseFieldAccessExpr <|>
+parseLeftRecExpr2 = try $ (parseCallExpr <|>
   parseArrayAccessExpr <|>
-  parseCastExpr <|>
-  parseCallExpr
+  parseFieldAccessExpr)
 
 parseNewExpr :: Parser Expr
-parseNewExpr = do
+parseNewExpr = try $ do
   _ <- string "new"
   _ <- skipParser
   t <- parseType
@@ -59,16 +57,26 @@ parseNewExpr = do
 
 parseArrayExpr :: Parser Expr
 parseArrayExpr = do
-  _ <- char '['
-  _ <- skipParser
-  exprs <- sepBy parseExpr (mylexeme $ char ',')
-  _ <- skipParser
-  _ <- char ']'
+  exprs <- emptyArray <|> nonEmptyArray
   _ <- skipParser
   return $ ArrayLiteral exprs
+  where
+    emptyArray = try $ do
+      _ <- char '['
+      _ <- skipParser
+      _ <- char ']'
+      return []
+    nonEmptyArray = do
+      _ <- char '['
+      _ <- skipParser
+      exprs <- sepBy parseExpr (mylexeme $ char ',')
+      _ <- skipParser
+      _ <- char ']'
+      return exprs
+      
 
 parseArrayAccessExpr :: Parser Expr
-parseArrayAccessExpr = do
+parseArrayAccessExpr = try $  do
   expr <- parseSimple
   _ <- skipParser
   brackedExprs <- many bracketedExpr
@@ -83,10 +91,10 @@ parseArrayAccessExpr = do
       _ <- char ']'
       _ <- skipParser
       return e
-    parseSimple = parseNonLeftRecExpr <|> parseFieldAccessExpr <|> parseCallExpr
+    parseSimple = parseFieldAccessExpr <|> parseCallExpr <|> parseNonLeftRecExpr
 
 parseFieldAccessExpr :: Parser Expr
-parseFieldAccessExpr = do
+parseFieldAccessExpr = try $ do
   expr <- parseSimple
   _ <- skipParser
   accessors <- many fieldAccessor
@@ -101,7 +109,7 @@ parseFieldAccessExpr = do
     parseSimple = parseNonLeftRecExpr <|> parseArrayAccessExpr <|> parseCallExpr
 
 parseParenExpr :: Parser Expr
-parseParenExpr = do
+parseParenExpr = try $ do
   _ <- char '('
   _ <- skipParser
   expr <- parseExpr
@@ -112,7 +120,7 @@ parseParenExpr = do
 
 
 parseCallExpr :: Parser Expr
-parseCallExpr = do
+parseCallExpr = try $ do
   expr <- parseSimple
   _ <- skipParser
   args <- many calls
@@ -123,7 +131,7 @@ parseCallExpr = do
       args <- emptyArgs <|> nonEmptyArgs
       _ <- skipParser
       return args
-    parseSimple = parseNonLeftRecExpr <|> parseArrayAccessExpr <|> parseFieldAccessExpr
+    parseSimple = parseArrayAccessExpr <|> parseFieldAccessExpr <|> parseNonLeftRecExpr
     emptyArgs = try $ do
       _ <- char '('
       _ <- skipParser
@@ -140,11 +148,16 @@ parseCallExpr = do
 
 parseCastExpr :: Parser Expr
 parseCastExpr = do
-  expr <- parseExpr
-  _ <- skipParser
-  _ <- string "as"
+  _ <- string "cast"
+  _ <- char '('
   _ <- skipParser
   t <- parseType
+  _ <- skipParser
+  _ <- char ','
+  _ <- skipParser
+  expr <- parseExpr
+  _ <- skipParser
+  _ <- char ')'
   _ <- skipParser
   return $ Cast t expr
 
@@ -158,7 +171,7 @@ parseInstanceofExpr = do
   _ <- skipParser
   return $ InstanceOf expr t
   where
-    parseSimple = parseLeftRecExpr2
+    parseSimple = parseArrayAccessExpr <|> parseFieldAccessExpr <|> parseNonLeftRecExpr
 
 
 
