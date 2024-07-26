@@ -1,7 +1,6 @@
 module Main where
 
-import Compiler.Parser.Expr.Ops
-import Compiler.Parser.Expr.Base
+import Compiler.Parser.Statement
 import Text.Megaparsec
 import Text.Megaparsec.Error
 import Data.Text

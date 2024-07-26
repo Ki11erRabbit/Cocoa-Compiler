@@ -1,6 +1,5 @@
 module Compiler.Ast.Statement where
 
-import Compiler.Ast.Expr
 import Compiler.Ast.Shared
 
 data Statement = WhileStmt WhileStatement | ForStmt ForStatement | IfStmt IfExpr | ReturnStmt ReturnStatement | LetStmt LetStatement | ExprStmt Expr | BreakStmt BreakStatement | ContinueStmt ContinueStatement | Hanging Expr
@@ -25,4 +24,39 @@ data ContinueStatement = ContinueStatement
   deriving (Show, Eq)
 
 data IfExpr = IfExpr Expr [Statement] (Maybe (Either [Statement] IfExpr))
+  deriving (Show, Eq)
+
+
+
+
+data Expr =
+    BinaryOp BinaryOp Expr Expr
+  | UnaryOp UnaryOp Expr
+  | Call Expr [Expr]
+  | NewExpr Type [Expr]
+  | Var String
+  | FieldAccess Expr String
+  | ArrayAccess Expr Expr
+  | ArrayLiteral [Expr]
+  | Literal Literal
+  | ThisExpr
+  | SuperExpr
+  | NullExpr
+  | Cast Type Expr
+  | InstanceOf Expr Type
+  | Paren Expr
+--  | IfExprExpr IfExpr
+-- | Closure [ClosureParam] ClosureBody
+  deriving (Show, Eq)
+
+data BinaryOp = Add | Sub | Mul | Div | Mod | And | Or | Eq | Neq | Lt | Gt | Le | Ge | BitAnd | BitOr | BitXor | LShift | RShift | ExclusiveRangeOp | InclusiveRangeOp | LogicalAnd | LogicalOr
+  deriving (Show, Eq)
+
+data UnaryOp = Neg | NotOp
+  deriving (Show, Eq)
+
+data Literal = IntLit String | FloatLit String | BoolLit Bool | CharLit Char | StringLit String
+  deriving (Show, Eq)
+
+data ClosureParam = ClosureTyped String Type | ClosureUnTyped String
   deriving (Show, Eq)

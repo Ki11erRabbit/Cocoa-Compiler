@@ -1,16 +1,12 @@
-{-# OverloadedStrings #-}
-module Compiler.Parser.Expr.OpsSpec (main, spec) where
+{-# LANGUAGE OverloadedStrings #-}
+module Compiler.Parser.StatementSpec (main, spec) where
 
 import Text.Megaparsec
 import Compiler.Ast.Expr
-import Compiler.Ast.Shared
 import Compiler.Parser.Expr.Ops
-import Compiler.Parser.Expr.Shared
 import Compiler.Parser.Expr.Base
 import Test.Hspec
 import Test.Hspec.Megaparsec
-import Test.QuickCheck
-import Control.Monad.Combinators.Expr
 import Data.Text (pack)
 
 main :: IO ()
@@ -37,4 +33,3 @@ spec = do
       parse (parseOp parseBaseExpr) "" (pack "!12 + !2") `shouldParse` BinaryOp Add (UnaryOp NotOp (Literal (IntLit "12"))) (UnaryOp NotOp (Literal (IntLit "2")))
     it "parses a binary operator with a unary operator" $ do
       parse (parseOp parseBaseExpr) "" (pack "!12 + !2") `shouldParse` BinaryOp Add (UnaryOp NotOp (Literal (IntLit "12"))) (UnaryOp NotOp (Literal (IntLit "2")))
-

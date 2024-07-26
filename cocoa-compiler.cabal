@@ -19,16 +19,13 @@ library
   exposed-modules:     Compiler
                      , Compiler.Ast
                      , Compiler.Ast.Class
-                     , Compiler.Ast.Expr
                      , Compiler.Ast.File
                      , Compiler.Ast.Method
                      , Compiler.Ast.Shared
                      , Compiler.Ast.Statement
                      , Compiler.Parser
                      , Compiler.Parser.Shared
-                     , Compiler.Parser.Expr.Base
-                     , Compiler.Parser.Expr.Ops
-                     , Compiler.Parser.Expr.Shared
+                     , Compiler.Parser.Statement
   build-depends:       base >= 4.7 && < 5
                      , megaparsec
                      , parser-combinators
@@ -70,7 +67,7 @@ test-suite cocoa-compiler-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Compiler.Parser.Expr.OpsSpec
+  other-modules:       Compiler.Parser.StatementSpec
   build-depends:       base
                      , cocoa-compiler
                      , hspec
