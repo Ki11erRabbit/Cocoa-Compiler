@@ -2,6 +2,7 @@
 module Compiler.Parser.StatementSpec (main, spec) where
 
 import Text.Megaparsec
+import Compiler.Ast.Shared
 import Compiler.Ast.Statement
 import Compiler.Parser.Statement
 import Test.Hspec
@@ -51,3 +52,33 @@ spec = do
       parse (parseOp parseBaseExpr) "" (pack "!12 + !2") `shouldParse` BinaryOp Add (UnaryOp NotOp (Literal (IntLit "12"))) (UnaryOp NotOp (Literal (IntLit "2")))
     it "parses a binary operator with a unary operator" $ do
       parse (parseOp parseBaseExpr) "" (pack "!12 + !2") `shouldParse` BinaryOp Add (UnaryOp NotOp (Literal (IntLit "12"))) (UnaryOp NotOp (Literal (IntLit "2")))
+  describe "parseNewExpr" $ do
+    it "parses a new expr" $ do
+      parse parseNewExpr "" "new A()" `shouldParse` NewExpr (ClassType (Path ["A"])) []
+    it "parses a new expr with args" $ do
+      parse parseNewExpr "" "new A(1, 2)" `shouldParse` NewExpr (ClassType (Path ["A"])) [Literal (IntLit "1"), Literal (IntLit "2")]
+  describe "parseCallExpr" $ do
+    it "parses a call" $ do
+      parse parseCallExpr "" "a()" `shouldParse` Call (Var "a") []
+    it "parses a call with args" $ do
+      parse parseCallExpr "" "a(1, 2)" `shouldParse` Call (Var "a") [Literal (IntLit "1"), Literal (IntLit "2")]
+  describe "parseFieldAccessExpr" $ do
+    it "parses a field access" $ do
+      parse parseFieldAccessExpr "" "a.b" `shouldParse` FieldAccess (Var "a") "b"
+  describe "parseArrayAccessExpr" $ do
+    it "parses an array access" $ do
+      parse parseArrayAccessExpr "" "a[1]" `shouldParse` ArrayAccess (Var "a") (Literal (IntLit "1"))
+  describe "parseArrayExpr" $ do
+    it "parses an array literal" $ do
+      parse parseArrayExpr "" "[1, 2]" `shouldParse` ArrayLiteral [Literal (IntLit "1"), Literal (IntLit "2")]
+  describe "parseParenExpr" $ do
+    it "parses a paren expr" $ do
+      parse parseParenExpr "" "(1)" `shouldParse` Paren (Literal (IntLit "1"))
+  describe "parseInstanceofExpr" $ do
+    it "parses an instance of expr" $ do
+      parse parseInstanceofExpr "" "a instanceof A" `shouldParse` InstanceOf (Var "a") (ClassType (Path ["A"]))
+  describe "parseCastExpr" $ do
+    it "parses a cast expr" $ do
+      parse parseCastExpr "" "a as A" `shouldParse` Cast (ClassType (Path ["A"])) (Var "a")
+  
+  
