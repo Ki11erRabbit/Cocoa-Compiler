@@ -17,17 +17,19 @@ parseNonLeftRecExpr :: Parser Expr
 parseNonLeftRecExpr = try $ (parseBaseExpr <|>
   parseArrayExpr <|>
   parseParenExpr <|>
+  parseInstanceofExpr <|> 
   parseCastExpr <|>
   parseNewExpr <?> "Parse Non Left Rec Expr")
 
 parseLeftRecExpr1 :: Parser Expr
-parseLeftRecExpr1 = try $ (parseInstanceofExpr <|> (parseOp (parseNonLeftRecExpr <|> parseLeftRecExpr2)))
+parseLeftRecExpr1 = try $ ((parseOp parseLeftRecExpr2))
 
 
 parseLeftRecExpr2 :: Parser Expr
 parseLeftRecExpr2 = try $ (parseCallExpr <|>
   parseArrayAccessExpr <|>
-  parseFieldAccessExpr)
+  parseFieldAccessExpr <|>
+  parseNonLeftRecExpr <?> "Parse Left Rec Expr")
 
 parseNewExpr :: Parser Expr
 parseNewExpr = try $ do
@@ -151,11 +153,11 @@ parseCastExpr = do
   _ <- string "cast"
   _ <- char '('
   _ <- skipParser
-  t <- parseType
+  expr <- parseExpr
   _ <- skipParser
   _ <- char ','
   _ <- skipParser
-  expr <- parseExpr
+  t <- parseType
   _ <- skipParser
   _ <- char ')'
   _ <- skipParser
@@ -163,15 +165,17 @@ parseCastExpr = do
 
 parseInstanceofExpr :: Parser Expr
 parseInstanceofExpr = do
-  expr <- parseSimple
-  _ <- skipParser
   _ <- string "instanceof"
+  _ <- char '('
+  expr <- parseExpr
+  _ <- skipParser
+  _ <- char ','
   _ <- skipParser
   t <- parseType
   _ <- skipParser
+  _ <- char ')'
+  _ <- skipParser
   return $ InstanceOf expr t
-  where
-    parseSimple = parseArrayAccessExpr <|> parseFieldAccessExpr <|> parseNonLeftRecExpr
 
 
 
