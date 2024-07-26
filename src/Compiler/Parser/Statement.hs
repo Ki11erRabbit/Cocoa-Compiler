@@ -7,11 +7,173 @@ import Compiler.Parser.Shared
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Control.Monad.Combinators.Expr
+import Control.Monad.Combinators
 import Debug.Trace(trace)
 
+parseBlock :: Parser [Statement]
+parseBlock = do
+  _ <- char '{'
+  _ <- skipParser
+  stmts <- manyTill  (mylexeme parseStatement) (mylexeme $ char '}')
+  return stmts
+
+parseStatement :: Parser Statement
+parseStatement = parseIfStatement <|>
+  parseWhileStatement <|>
+  parseForStatement <|>
+  parseReturnStatement <|>
+  parseBreakStatement <|>
+  parseContinueStatement <|>
+  parseLetStatement <|>
+  parseAssignmentStatement <|>
+  parseExprStatement <|>
+  parseHangingExprStatement
+
+parseWhileStatement :: Parser Statement
+parseWhileStatement = do
+  _ <- string "while"
+  _ <- skipParser
+  expr <- parseExpr
+  _ <- skipParser
+  stmts <- parseBlock
+  _ <- skipParser
+  return $ WhileStmt $ WhileStatement expr stmts
+
+parseForStatement :: Parser Statement
+parseForStatement = do
+  _ <- string "for"
+  _ <- skipParser
+  leftExpr <- parseLetVar
+  _ <- skipParser
+  _ <- string "in"
+  _ <- skipParser
+  expr <- parseExpr
+  _ <- skipParser
+  stmts <- parseBlock
+  _ <- skipParser
+  return $ ForStmt $ ForStatement leftExpr expr stmts
+
+parseReturnStatement :: Parser Statement
+parseReturnStatement = do
+  _ <- string "return"
+  _ <- skipParser
+  expr <- parseReturn
+  _ <- skipParser
+  case expr of
+    Nothing -> return $ ReturnStmt $ ReturnUnit
+    Just e -> return $ ReturnStmt $ ReturnExpr e
+  where
+    parseReturn = parseUnitReturn <|> parseExprReturn
+    parseUnitReturn = do
+      _ <- char ';'
+      _ <- skipParser
+      return Nothing
+    parseExprReturn = do
+      expr <- parseExpr
+      _ <- skipParser
+      _ <- char ';'
+      _ <- skipParser
+      return $ Just expr
+
+parseBreakStatement :: Parser Statement
+parseBreakStatement = do
+  _ <- string "break"
+  _ <- skipParser
+  _ <- char ';'
+  _ <- skipParser
+  return $ BreakStmt $ BreakStatement
+
+parseContinueStatement :: Parser Statement
+parseContinueStatement = do
+  _ <- string "continue"
+  _ <- skipParser
+  _ <- char ';'
+  _ <- skipParser
+  return $ ContinueStmt $ ContinueStatement
+
+parseLetStatement :: Parser Statement
+parseLetStatement = do
+  _ <- string "let"
+  _ <- skipParser
+  varName <- parseLetVar
+  _ <- skipParser
+  t <- option Nothing $ do
+    _ <- char ':'
+    _ <- skipParser
+    t <- parseType
+    return $ Just t
+  _ <- skipParser
+  _ <- char '='
+  _ <- skipParser
+  expr <- parseExpr
+  _ <- skipParser
+  _ <- char ';'
+  _ <- skipParser
+  return $ LetStmt $ LetStatement varName t expr
+
+parseLetVar :: Parser LetVar
+parseLetVar = do
+  varName <- myidentifier
+  _ <- skipParser
+  return $ LetVar varName
+    
+parseAssignmentStatement :: Parser Statement
+parseAssignmentStatement = try $ do
+  varName <- parseLeftHandExpr
+  _ <- skipParser
+  _ <- char '='
+  _ <- skipParser
+  expr <- parseExpr
+  _ <- skipParser
+  _ <- char ';'
+  _ <- skipParser
+  return $ AssignmentStmt varName expr
+
+parseExprStatement :: Parser Statement
+parseExprStatement = try $ do
+  expr <- parseExpr
+  _ <- skipParser
+  _ <- char ';'
+  _ <- skipParser
+  return $ ExprStmt expr
+
+parseHangingExprStatement :: Parser Statement
+parseHangingExprStatement = try $ do
+  expr <- parseExpr
+  _ <- skipParser
+  return $ Hanging expr
+
+parseIfStatement :: Parser Statement
+parseIfStatement = IfStmt <$> parseIfExpr
+
+parseIfExpr :: Parser IfExpr
+parseIfExpr = do
+  _ <- string "if"
+  _ <- skipParser
+  expr <- parseExpr
+  _ <- skipParser
+  stmts <- parseBlock
+  elseBlock <- option Nothing $ do
+    _ <- string "else"
+    _ <- skipParser
+    body <- parseElseBody
+    return $ Just $ body
+  _ <- skipParser
+  return $ IfExpr expr stmts elseBlock
+  where
+    parseElseBody = eitherP parseBlock parseIfExpr 
+
+parseIfExprExpr :: Parser Expr
+parseIfExprExpr = IfExprExpr <$> parseIfExpr
+
+parseLeftHandExpr :: Parser Expr
+parseLeftHandExpr = try $ (parseVar <|> parseArrayAccessExpr <|> parseFieldAccessExpr)
+
+parseBlockExpr :: Parser Expr
+parseBlockExpr = BlockExpr <$> parseBlock
 
 parseExpr :: Parser Expr
-parseExpr = try $ (parseLeftRecExpr1 <|> parseLeftRecExpr2 <|> parseNonLeftRecExpr <?> "expression")
+parseExpr = try $ (parseIfExprExpr <|> parseBlockExpr <|> parseLeftRecExpr1 <|> parseLeftRecExpr2 <|>  parseNonLeftRecExpr  <?> "expression")
 
 parseNonLeftRecExpr :: Parser Expr
 parseNonLeftRecExpr = try $ (parseBaseExpr <|>

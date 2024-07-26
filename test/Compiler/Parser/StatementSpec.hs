@@ -103,6 +103,62 @@ spec = do
       parse parseExpr "" "!x + [3, 4]" `shouldParse` BinaryOp Add (UnaryOp NotOp (Var "x")) (ArrayLiteral [Literal (IntLit "3"), Literal (IntLit "4")])
     it "parses array concat with a unary operator" $ do
       parse parseExpr "" "[3, 4] + !x" `shouldParse` BinaryOp Add (ArrayLiteral [Literal (IntLit "3"), Literal (IntLit "4")]) (UnaryOp NotOp (Var "x"))
-      
-  
+    it "parses block expression" $ do
+      parse parseExpr "" "{1; 2}" `shouldParse` BlockExpr [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))]
+    it "parses an if expr" $ do
+      parse parseExpr "" "if true {1; 2} else {3; 4}" `shouldParse` IfExprExpr (IfExpr (Literal (BoolLit True)) [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))] (Just (Left [ExprStmt (Literal (IntLit "3")), Hanging (Literal (IntLit "4"))])))
+  describe "parseLetStatement" $ do
+    it "parses a let statement" $ do
+      parse parseLetStatement "" "let x = 1;" `shouldParse` LetStmt (LetStatement (LetVar "x") Nothing (Literal (IntLit "1")))
+    it "parses a let statement with a type" $ do
+      parse parseLetStatement "" "let x: Int = 1;" `shouldParse` LetStmt (LetStatement (LetVar "x") (Just (ClassType (Path ["Int"]))) (Literal (IntLit "1")))
+  describe "parseReturnStatement" $ do
+    it "parses a return statement" $ do
+      parse parseReturnStatement "" "return 1;" `shouldParse` ReturnStmt (ReturnExpr (Literal (IntLit "1")))
+    it "parses a return statement with no value" $ do
+      parse parseReturnStatement "" "return;" `shouldParse` ReturnStmt ReturnUnit
+  describe "parseIf Statement" $ do
+    it "parses an if statement" $ do
+      parse parseIfStatement "" "if true {1; 2}" `shouldParse` IfStmt (IfExpr (Literal (BoolLit True)) [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))] Nothing)
+    it "parses an if statement with an else" $ do
+      parse parseIfStatement "" "if true {1; 2} else {3; 4}" `shouldParse` IfStmt (IfExpr (Literal (BoolLit True)) [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))] (Just (Left [ExprStmt (Literal (IntLit "3")), Hanging (Literal (IntLit "4"))])))
+  describe "parseWhile Statement" $ do
+    it "parses a while statement" $ do
+      parse parseWhileStatement "" "while true {1; 2}" `shouldParse` WhileStmt (WhileStatement (Literal (BoolLit True)) [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))])
+  describe "parseFor Statement" $ do
+    it "parses a for statement" $ do
+      parse parseForStatement "" "for x in y {1; 2}" `shouldParse` ForStmt (ForStatement (LetVar "x") (Var "y") [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))])
+  describe "parseBreak Statement" $ do
+    it "parses a break statement" $ do
+      parse parseBreakStatement "" "break;" `shouldParse` BreakStmt BreakStatement
+  describe "parseContinue Statement" $ do
+    it "parses a continue statement" $ do
+      parse parseContinueStatement "" "continue;" `shouldParse` ContinueStmt ContinueStatement
+  describe "parseExpr Statement" $ do
+    it "parses an expr statement" $ do
+      parse parseExprStatement "" "1;" `shouldParse` ExprStmt (Literal (IntLit "1"))
+  describe "parseHanging Statement" $ do
+    it "parses a hanging statement" $ do
+      parse parseHangingExprStatement "" "1" `shouldParse` Hanging (Literal (IntLit "1"))
+  describe "parseStatement" $ do
+    it "parses a let statement" $ do
+      parse parseStatement "" "let x = 1;" `shouldParse` LetStmt (LetStatement (LetVar "x") Nothing (Literal (IntLit "1")))
+    it "parses a return statement" $ do
+      parse parseStatement "" "return 1;" `shouldParse` ReturnStmt (ReturnExpr (Literal (IntLit "1")))
+    it "parses an if statement" $ do
+      parse parseStatement "" "if true {1; 2}" `shouldParse` IfStmt (IfExpr (Literal (BoolLit True)) [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))] Nothing)
+    it "parses a while statement" $ do
+      parse parseStatement "" "while true {1; 2}" `shouldParse` WhileStmt (WhileStatement (Literal (BoolLit True)) [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))])
+    it "parses a for statement" $ do
+      parse parseStatement "" "for x in y {1; 2}" `shouldParse` ForStmt (ForStatement (LetVar "x") (Var "y") [ExprStmt (Literal (IntLit "1")), Hanging (Literal (IntLit "2"))])
+    it "parses a break statement" $ do
+      parse parseStatement "" "break;" `shouldParse` BreakStmt BreakStatement
+    it "parses a continue statement" $ do
+      parse parseStatement "" "continue;" `shouldParse` ContinueStmt ContinueStatement
+    it "parses an expr statement" $ do
+      parse parseStatement "" "1;" `shouldParse` ExprStmt (Literal (IntLit "1"))
+    it "parses a hanging statement" $ do
+      parse parseStatement "" "1" `shouldParse` Hanging (Literal (IntLit "1"))
+    
+
   

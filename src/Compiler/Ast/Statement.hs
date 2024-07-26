@@ -2,19 +2,19 @@ module Compiler.Ast.Statement where
 
 import Compiler.Ast.Shared
 
-data Statement = WhileStmt WhileStatement | ForStmt ForStatement | IfStmt IfExpr | ReturnStmt ReturnStatement | LetStmt LetStatement | ExprStmt Expr | BreakStmt BreakStatement | ContinueStmt ContinueStatement | Hanging Expr
+data Statement = WhileStmt WhileStatement | ForStmt ForStatement | IfStmt IfExpr | ReturnStmt ReturnStatement | LetStmt LetStatement | ExprStmt Expr | BreakStmt BreakStatement | ContinueStmt ContinueStatement | Hanging Expr | AssignmentStmt Expr Expr
   deriving (Show, Eq)
 
 data WhileStatement = WhileStatement Expr [Statement]
   deriving (Show, Eq)
 
-data ForStatement = ForStatement String Expr [Statement]
+data ForStatement = ForStatement LetVar Expr [Statement]
   deriving (Show, Eq)
 
 data ReturnStatement = ReturnExpr Expr | ReturnUnit
   deriving (Show, Eq)
 
-data LetStatement = LetStatement String (Maybe Type) Expr
+data LetStatement = LetStatement LetVar (Maybe Type) Expr
   deriving (Show, Eq)
 
 data BreakStatement = BreakStatement
@@ -26,6 +26,8 @@ data ContinueStatement = ContinueStatement
 data IfExpr = IfExpr Expr [Statement] (Maybe (Either [Statement] IfExpr))
   deriving (Show, Eq)
 
+data LetVar = LetVar String 
+  deriving (Show, Eq)
 
 
 
@@ -45,7 +47,8 @@ data Expr =
   | Cast Type Expr
   | InstanceOf Expr Type
   | Paren Expr
---  | IfExprExpr IfExpr
+  | IfExprExpr IfExpr
+  | BlockExpr [Statement]
 -- | Closure [ClosureParam] ClosureBody
   deriving (Show, Eq)
 
