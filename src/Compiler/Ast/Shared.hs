@@ -5,7 +5,7 @@ data Path = Path [String]
   deriving (Show, Eq)
 
 data Visibility = PublicVis | ProtectedVis | PrivateVis
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Type = Primitive PrimitiveType | Array Type | ClassType Path | Arguments Type [Type]
   deriving (Show, Eq)
@@ -20,4 +20,4 @@ data PrimitiveType = UnitPrimType | U8PrimType | U16PrimType | U32PrimType | U64
 data TypeParam = TypeParam
   { typeName :: String
   , bounds :: [Type]
-  } deriving (Show)
+  } deriving (Show, Eq)

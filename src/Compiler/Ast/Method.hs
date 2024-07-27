@@ -13,10 +13,10 @@ data Method = Method
   , params :: [Param]
   , returnType :: Type
   , body :: MethodBody
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 data MethodBody = Prototype | MethodBody [Statement] | Native String | Redirect String
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Param = Param
   { paramName :: String

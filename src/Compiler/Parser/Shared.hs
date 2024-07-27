@@ -6,8 +6,64 @@ import Text.Megaparsec.Char
 import Data.Text (Text, unpack)
 import Data.Void
 import Compiler.Ast.Shared
+import Control.Monad.Combinators
 
 type Parser = Parsec Void Text
+
+parseTypeParams :: Parser [TypeParam]
+parseTypeParams = do
+  _ <- char '<'
+  _ <- skipParser
+  params <- sepBy parseTypeParam (mylexeme $ char ',')
+  _ <- skipParser
+  _ <- char '>'
+  return params
+
+parseTypeParam :: Parser TypeParam
+parseTypeParam = do
+  name <- parametricTypeIdentifier
+  _ <- skipParser
+  bounds <- option [] $ do
+    _ <- char ':'
+    _ <- skipParser
+    bounds <- sepBy parseType (mylexeme $ char '+')
+    return bounds
+  _ <- skipParser
+  return $ TypeParam name bounds
+
+parseVisibility :: Parser Visibility
+parseVisibility = do
+  visibility <- option "priv" (try (string "pub") <|> (string "priv") <|> (string "prot"))
+  _ <- skipParser
+  case visibility of
+    "pub" -> return PublicVis
+    "priv" -> return PrivateVis
+    "prot" -> return ProtectedVis
+
+parametricTypeIdentifier :: Parser String
+parametricTypeIdentifier = do
+  first <- upperChar
+  rest <- many alphaNumChar
+  _ <- skipParser
+  return $ first : rest
+
+parseStatic :: Parser Bool
+parseStatic = do
+  static <- option "" (string "static")
+  _ <- skipParser
+  return $ static == "static"
+
+parseAbstract :: Parser Bool
+parseAbstract = do
+  abstract <- option "" (string "abstract")
+  _ <- skipParser
+  return $ abstract == "abstract"
+
+parseConst :: Parser Bool
+parseConst = do
+  const <- option "" (string "const")
+  _ <- skipParser
+  return $ const == "const"
 
 parsePath :: Parser Path
 parsePath = do
@@ -93,7 +149,12 @@ myidentifier = do
       "bool" -> fail "bool is a reserved keyword"
       "char" -> fail "char is a reserved keyword"
       "()" -> fail "() is a reserved keyword"
-      "cast" -> fail "cast is a reserved keyword"
+      "pub" -> fail "pub is a reserved keyword"
+      "priv" -> fail "priv is a reserved keyword"
+      "prot" -> fail "prot is a reserved keyword"
+      "static" -> fail "static is a reserved keyword"
+      "abstract" -> fail "abstract is a reserved keyword"
+      "fn" -> fail "fn is a reserved keyword"
       _ -> return identifier
 
 
