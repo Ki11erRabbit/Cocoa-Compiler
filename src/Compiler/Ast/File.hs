@@ -5,13 +5,13 @@ import Compiler.Ast.Class
 
 data File = File
   { packageDec :: PackageDec
-  , imports :: [ImportAst]
+  , imports :: [ImportDec]
   , primaryClass :: Class
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 data PackageDec = PackageDec Path
-  deriving (Show)
+  deriving (Show, Eq)
 
-data ImportAst = ImportAst Path
-  deriving (Show)
+data ImportDec = ImportDec Path
+  deriving (Show, Eq)
 

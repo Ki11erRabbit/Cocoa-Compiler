@@ -85,12 +85,11 @@ parseTypePath = do
       first <- myTypeIdentifier
       return $ Path [first]
     multiple = do
-      first <- myidentifier <|> myTypeIdentifier
+      first <- myidentifier
       rest <- many $ do
         _ <- char '.'
-        myidentifier
-      last <- myTypeIdentifier
-      return $ Path (first : (rest ++ [last]))
+        myidentifier <|> myTypeIdentifier
+      return $ Path (first : (rest))
 
 
 skipParser :: Parser ()
@@ -127,7 +126,7 @@ anyChar :: Parser Char
 anyChar = satisfy (const True)
 
 myidentifier :: Parser String
-myidentifier = do
+myidentifier = try $ do
   first <- lowerChar <|> char '_'
   rest <- many alphaNumChar
   _ <- skipParser
