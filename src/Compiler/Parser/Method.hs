@@ -8,10 +8,11 @@ import Compiler.Ast.Shared
 import Compiler.Parser.Shared
 import Compiler.Parser.Statement
 
-
+parseMethod :: Parser Method
+parseMethod = parseMethodProper <|> parseRedirectMethod <|> parseNativeMethod <|> parseMethodPrototype <?> "method"
 
 parseMethodProper :: Parser Method
-parseMethodProper = do
+parseMethodProper = try $ do
   visibility <- parseVisibility
   static <- parseStatic
   abstract <- parseAbstract
@@ -40,7 +41,7 @@ parseMethodProper = do
 
 
 parseRedirectMethod :: Parser Method
-parseRedirectMethod = do
+parseRedirectMethod = try $ do
   visibility <- parseVisibility
   static <- parseStatic
   abstract <- parseAbstract
@@ -70,7 +71,7 @@ parseRedirectMethod = do
       return type'
 
 parseNativeMethod :: Parser Method
-parseNativeMethod = do
+parseNativeMethod = try $ do
   visibility <- parseVisibility
   static <- parseStatic
   abstract <- parseAbstract
@@ -100,7 +101,7 @@ parseNativeMethod = do
       return type'
 
 parseMethodPrototype :: Parser Method
-parseMethodPrototype = do
+parseMethodPrototype = try $ do
   visibility <- parseVisibility
   static <- parseStatic
   abstract <- parseAbstract

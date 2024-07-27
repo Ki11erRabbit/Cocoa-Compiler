@@ -48,3 +48,19 @@ spec = do
       parse parseMethodProper "" "fn foo() u8 { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
     it "parses a method proper without return type" $ do
       parse parseMethodProper "" "fn foo() { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive UnitPrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+  describe "parseMethod" $ do
+    it "parses a method" $ do
+      parse parseMethod "" "fn foo() u8 { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+    it "parses a method with no return type" $ do
+      parse parseMethod "" "fn foo() { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive UnitPrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+    it "parses a method with arg" $ do
+      parse parseMethod "" "fn foo(x: u8) u8 { return x; }" `shouldParse` Method PrivateVis False False False "foo" [] [(Param "x" (Primitive U8PrimType))] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Var "x"))])
+    it "parses a method with type param" $ do
+      parse parseMethod "" "fn foo<T>() u8 { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [(TypeParam "T" [])] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+    it "parses a const method" $ do
+      parse parseMethod "" "const fn foo() u8 { return 0; }" `shouldParse` Method PrivateVis False False True "foo" [] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+    it "parses a static method" $ do
+      parse parseMethod "" "static fn foo() u8 { return 0; }" `shouldParse` Method PrivateVis True False False "foo" [] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+    it "parses an abstract method" $ do
+      parse parseMethod "" "abstract fn foo() u8;" `shouldParse` Method PrivateVis False True False "foo" [] [] (Primitive U8PrimType) Prototype
+    
