@@ -3,6 +3,7 @@ module Compiler.Parser.MethodSpec (main, spec) where
 
 import Text.Megaparsec
 import Compiler.Ast.Shared
+import Compiler.Ast.Statement
 import Compiler.Ast.Method
 import Compiler.Parser.Method
 import Test.Hspec
@@ -42,3 +43,8 @@ spec = do
       parse parseRedirectMethod "" "fn foo() u8 @ bar;" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive U8PrimType) (Redirect "bar")
     it "parses a native method with no return type" $ do
       parse parseRedirectMethod "" "fn foo() @ bar;" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive UnitPrimType) (Redirect "bar")
+  describe "parseMethodProper" $ do
+    it "parses a method proper" $ do
+      parse parseMethodProper "" "fn foo() u8 { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+    it "parses a method proper without return type" $ do
+      parse parseMethodProper "" "fn foo() { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [] [] (Primitive UnitPrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])

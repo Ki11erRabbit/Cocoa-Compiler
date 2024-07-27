@@ -8,6 +8,37 @@ import Compiler.Ast.Shared
 import Compiler.Parser.Shared
 import Compiler.Parser.Statement
 
+
+
+parseMethodProper :: Parser Method
+parseMethodProper = do
+  visibility <- parseVisibility
+  static <- parseStatic
+  abstract <- parseAbstract
+  const <- parseConst
+  _ <- string "fn"
+  _ <- skipParser
+  name <- myidentifier
+  typeParams <- option [] parseTypeParams
+  _ <- skipParser
+  params <- parseParams
+  _ <- skipParser
+  (returnType, body) <- parseReturnType
+  return $ Method visibility static abstract const name typeParams params returnType (MethodBody body)
+  where
+    parseReturnType = parseMissingType <|> parseNonMissingType
+    parseMissingType = try $ do
+      body <- parseBlock
+      _ <- skipParser
+      return (Primitive UnitPrimType, body)
+    parseNonMissingType = do
+      type' <- parseType
+      _ <- skipParser
+      body <- parseBlock
+      _ <- skipParser
+      return (type', body)
+
+
 parseRedirectMethod :: Parser Method
 parseRedirectMethod = do
   visibility <- parseVisibility
