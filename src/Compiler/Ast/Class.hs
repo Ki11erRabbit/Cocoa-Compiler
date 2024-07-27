@@ -5,7 +5,7 @@ import Compiler.Ast.Method
 
 
 data SuperClass = SuperClass Path [TypeParam]
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Class = Class
   { visibility :: Visibility
@@ -15,18 +15,18 @@ data Class = Class
   , superClass :: Maybe SuperClass
   , interfaces :: [SuperClass]
   , members :: [Member]
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 data ClassType = RegularType | InterfaceType | AbstractType
-  deriving (Show)
+  deriving (Show, Eq)
 
 
-data Member = FieldMember Field | MethodMember Method
-  deriving (Show)
+data Member = FieldMember Field | MethodMember Method | ClassMember Class
+  deriving (Show, Eq)
 
 
 data Field = Field
   { fieldVisibility :: Visibility
   , fieldName :: String
   , fieldType :: Type
-  } deriving (Show)
+  } deriving (Show, Eq)

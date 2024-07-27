@@ -17,7 +17,6 @@ data PrimitiveType = UnitPrimType | U8PrimType | U16PrimType | U32PrimType | U64
 --  deriving (Show)
 
 
-data TypeParam = TypeParam
-  { typeName :: String
-  , bounds :: [Type]
-  } deriving (Show, Eq)
+data TypeParam = Generic String [Type] | Concrete Type
+  deriving (Show, Eq)
+

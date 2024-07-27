@@ -27,6 +27,7 @@ library
                      , Compiler.Parser.Shared
                      , Compiler.Parser.Statement
                      , Compiler.Parser.Method
+                     , Compiler.Parser.Class
   build-depends:       base >= 4.7 && < 5
                      , megaparsec
                      , parser-combinators

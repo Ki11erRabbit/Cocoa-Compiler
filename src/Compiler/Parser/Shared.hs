@@ -20,16 +20,20 @@ parseTypeParams = do
   return params
 
 parseTypeParam :: Parser TypeParam
-parseTypeParam = do
-  name <- parametricTypeIdentifier
-  _ <- skipParser
-  bounds <- option [] $ do
-    _ <- char ':'
-    _ <- skipParser
-    bounds <- sepBy parseType (mylexeme $ char '+')
-    return bounds
-  _ <- skipParser
-  return $ TypeParam name bounds
+parseTypeParam = generic <|> concrete
+  where
+    concrete = do
+      value <- parseType
+      _ <- skipParser
+      return $ Concrete value
+    generic = try $ do
+      name <- parametricTypeIdentifier
+      _ <- skipParser
+      bounds <- option [] $ do
+        _ <- char ':'
+        _ <- skipParser
+        sepBy parseType (mylexeme $ char '+')
+      return $ Generic name bounds
 
 parseVisibility :: Parser Visibility
 parseVisibility = do

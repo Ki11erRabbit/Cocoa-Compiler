@@ -22,7 +22,7 @@ spec = do
     it "parses a method prototype with arg" $ do
       parse parseMethodPrototype "" "fn foo(x: u8) u8;" `shouldParse` Method PrivateVis False False False "foo" [] [(Param "x" (Primitive U8PrimType))] (Primitive U8PrimType) Prototype
     it "parses a method prototype with type param" $ do
-      parse parseMethodPrototype "" "fn foo<T>() u8;" `shouldParse` Method PrivateVis False False False "foo" [(TypeParam "T" [])] [] (Primitive U8PrimType) Prototype
+      parse parseMethodPrototype "" "fn foo<T>() u8;" `shouldParse` Method PrivateVis False False False "foo" [(Generic "T" [])] [] (Primitive U8PrimType) Prototype
     it "parses a const method prototype" $ do
       parse parseMethodPrototype "" "const fn foo() u8;" `shouldParse` Method PrivateVis False False True "foo" [] [] (Primitive U8PrimType) Prototype
     it "parses a static method prototype" $ do
@@ -56,7 +56,7 @@ spec = do
     it "parses a method with arg" $ do
       parse parseMethod "" "fn foo(x: u8) u8 { return x; }" `shouldParse` Method PrivateVis False False False "foo" [] [(Param "x" (Primitive U8PrimType))] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Var "x"))])
     it "parses a method with type param" $ do
-      parse parseMethod "" "fn foo<T>() u8 { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [(TypeParam "T" [])] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
+      parse parseMethod "" "fn foo<T>() u8 { return 0; }" `shouldParse` Method PrivateVis False False False "foo" [(Generic "T" [])] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
     it "parses a const method" $ do
       parse parseMethod "" "const fn foo() u8 { return 0; }" `shouldParse` Method PrivateVis False False True "foo" [] [] (Primitive U8PrimType) (MethodBody [ReturnStmt (ReturnExpr (Literal (IntLit "0")))])
     it "parses a static method" $ do
