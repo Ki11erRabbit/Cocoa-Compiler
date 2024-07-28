@@ -44,9 +44,10 @@ checkClass Class{members=members} classType types package imports = do
   let methodTypes = Prelude.foldl (\acc member -> case member of
                                       MethodMember method -> ((methodName method), (getTypes package types imports (Just classType) method)):acc
                                       _ -> acc) [] members
-  let (methodNames, methodTypes) = Prelude.unzip methodTypes
-  methodTypes' <- Prelude.sequence methodTypes {- TODO: check subclasses -}
-  let newTypes = Prelude.foldl (\acc (name, types) -> H.insert (package Prelude.++ [name]) types acc) H.empty $ Prelude.zip methodNames methodTypes'
+  out <- Left (trace ("Mesage " Prelude.++ (show methodTypes)) (show methodTypes))
+  let (methodNames, methodTypes') = Prelude.unzip methodTypes
+  methodTypes'' <- Prelude.sequence methodTypes' {- TODO: check subclasses -}
+  let newTypes = Prelude.foldl (\acc (name, types) -> H.insert (package Prelude.++ [name]) types acc) H.empty $ Prelude.zip methodNames methodTypes''
   return $ Prelude.sequence $ Prelude.map (\method -> checkMethod method newTypes localTypes) $ Prelude.filter (\member -> case member of
     MethodMember _ -> True
     _ -> False) members

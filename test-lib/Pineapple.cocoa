@@ -1,3 +1,9 @@
 package test;
 
-pub class Pineapple {}
+pub class Pineapple {
+    pub fn pen() u8;
+    pub fn pen() u8;
+    pub fn pen() u8;
+    pub fn pen() u8;
+    
+}
