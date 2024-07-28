@@ -85,7 +85,7 @@ parseTypePath = do
       first <- myTypeIdentifier
       return $ Path [first]
     multiple = do
-      first <- myidentifier
+    first <- myidentifier <|> myTypeIdentifier
       rest <- many $ do
         _ <- char '.'
         myidentifier <|> myTypeIdentifier

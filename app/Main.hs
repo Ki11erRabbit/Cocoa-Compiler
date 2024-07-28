@@ -3,7 +3,6 @@ module Main where
 import Compiler as C
 import Compiler.FileGraph
 import System.Environment
-import Text.Megaparsec.Error
 
 
 main :: IO ()
@@ -12,10 +11,15 @@ main = do
   case args of
     dir:_ -> do
       results <- C.readDirectory dir
-      sequence $ map (\x -> case x of
-        Left err -> print err
-        Right (name, file) -> print file) results
-      return ()
+      case results of
+        Left msg -> print msg
+        Right xs -> let (names, files) = unzip xs in
+          let (vec, nodes, fullNames) = loadNodes names files in do
+            print $ fullNames
+            print $ nodes
+            let edges = createEdges vec nodes in
+              let graph = genGraph fullNames edges in do
+                print $ topologicalSort graph
     _ -> putStrLn "Please provide a directory to read from"
     
           

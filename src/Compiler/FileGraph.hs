@@ -25,10 +25,10 @@ loadNodes names files = (V.fromList files, H.fromList $ Prelude.zip (Prelude.map
 
 
 createEdges :: V.Vector File -> Nodes -> [EdgeSpec]
-createEdges files nodes = Prelude.reverse $ V.foldl' (\acc file -> acc Prelude.++ (createEdge file nodes)) [] files
+createEdges files nodes = Prelude.reverse $ let (_, acc) = V.foldl' (\(i, acc) file -> (i + 1, acc Prelude.++ (createEdge i file nodes))) (0, []) files in acc
   where
-    createEdge :: File -> Nodes -> [EdgeSpec]
-    createEdge file nodes = Prelude.map (\(ImportDec (Path path)) -> EdgeSpec (nodes H.! path) (nodes H.! (Prelude.init path))) (imports file)
+    createEdge :: Int -> File -> Nodes -> [EdgeSpec]
+    createEdge index file nodes = (\(ImportDec (Path path)) -> EdgeSpec index (nodes H.! path) ) <$> (imports file)
 
 genGraph :: [PathChain] -> [EdgeSpec] -> Gr NodeLabel Int
 genGraph names espec = mkGraph nodes edges
