@@ -9,6 +9,7 @@ data File = File
   , primaryClass :: Class
   } deriving (Show, Eq)
 
+
 data PackageDec = PackageDec Path
   deriving (Show, Eq)
 

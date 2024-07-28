@@ -29,10 +29,15 @@ library
                      , Compiler.Parser.Method
                      , Compiler.Parser.Class
                      , Compiler.Parser.File
+                     , Compiler.FileGraph
   build-depends:       base >= 4.7 && < 5
                      , megaparsec
                      , parser-combinators
                      , text
+                     , fgl
+                     , vector
+                     , unordered-containers
+                     , directory
   default-language:    Haskell2010
   ghc-options:         -Wall
                        -Wcompat

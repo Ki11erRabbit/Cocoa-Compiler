@@ -1,15 +1,21 @@
 module Main where
 
-import Compiler.Parser.Statement
-import Text.Megaparsec
-import Text.Megaparsec.Error
-import Data.Text
-import Data.Void (Void)
+import Compiler as C
+import Compiler.FileGraph
+import System.Environment
 
 
 main :: IO ()
 main = do
-  let input = "!12 + 2 * 4 - 5" in
-    case parse (parseOp parseBaseExpr) "" (pack input) of
-      Left err -> putStrLn $ errorBundlePretty err
-      Right expr -> print expr
+  args <- getArgs
+  case args of
+    dir:_ -> do
+      result <- C.readDirectory dir
+      case result of
+        Left err -> putStrLn $ errorBundlePretty err
+        Right (names, files) -> do
+          let (vec, nodes, pathChains) = loadNodes names files in
+            let graph = genGraph pathChains $ createEdges vec nodes in
+              print $ topologicalSort graph
+          
+  
