@@ -1,13 +1,17 @@
-module Main where
+module Main (main, runTypeChecker) where
 
 import Compiler as C
 import Compiler.FileGraph
 import System.Environment
-
+import Compiler.TypeChecker as TC
 
 main :: IO ()
 main = do
   args <- getArgs
+  runTypeChecker args
+    
+runTypeChecker :: [String] -> IO ()       
+runTypeChecker args = do
   case args of
     dir:_ -> do
       results <- C.readDirectory dir
@@ -18,9 +22,10 @@ main = do
             print $ fullNames
             print $ nodes
             let edges = createEdges vec nodes in
-              let graph = genGraph fullNames edges in do
-                print $ topologicalSort graph
-    _ -> putStrLn "Please provide a directory to read from"
-    
-          
-  
+              let graph = genGraph fullNames edges in
+                let sorted = reverse $ topologicalSort graph in do
+                _ <- print sorted
+                case TC.topLevelTypeCheck vec sorted of
+                  Left msg -> print msg
+                  Right _ -> print "Type checking successful"
+    _ -> putStrLn "Please provide a directory to read from" 

@@ -2,6 +2,8 @@ module Compiler.Ast.Method where
 
 import Compiler.Ast.Shared
 import Compiler.Ast.Statement
+import Data.Maybe
+
 
 data Method = Method
   { methodVisibility :: Visibility
@@ -22,3 +24,10 @@ data Param = Param
   { paramName :: String
   , paramType :: Type
   } deriving (Show, Eq)
+
+instance TypeUtils Method where
+  getTypes package types imports _parentClass Method{isStatic=True,methodTypeParams=typeParams,params=params,returnType=returnType} = do
+    Right [(MethodType typeParams (Prelude.map paramType params) returnType)]
+    
+  getTypes package types imports parentClass Method{isStatic=False,methodTypeParams=typeParams,params=params,returnType=returnType} = do
+    Right [(MethodType typeParams ((maybeToList parentClass) ++ (Prelude.map paramType params)) returnType)]

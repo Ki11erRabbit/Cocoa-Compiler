@@ -5,6 +5,7 @@ import Compiler.Ast.Method
 import Data.HashMap.Strict as H
 import Data.Maybe
 import Data.List as L
+import Debug.Trace (trace)
 
 
 data SuperClass = SuperClass Path [TypeParam]
@@ -36,16 +37,18 @@ data Field = Field
 
 instance TypeUtils Class where
   getTypes package types imports _parent c = do
-    let parents = (maybeToList $ superClass c) ++ interfaces c
-    let parentTypes = Prelude.filter (/= Nothing) $ Prelude.map (\path -> types H.!? path) $ L.concat $ Prelude.map (\(SuperClass (Path path) _) -> if length path == 1 then Prelude.map (++ path) imports else [path]) parents
+    _ <- trace ("types for class " ++ show types) $ return ()
+    _ <- trace "getting class types" $ return ()
+    let parents = (Prelude.maybe (SuperClass (Path ["Object"]) []) (\x -> x) (superClass c)):(interfaces c)
+    let parentTypes = Prelude.filter (/= Nothing) $ Prelude.map (\path -> types H.!? (trace (show path) path)) $ L.concat $ Prelude.map (\(SuperClass (Path path) _) -> if length path == 1 && path /= ["Object"] then imports else [path]) parents
     let justParentTypes = Prelude.map fromJust parentTypes
-    if length parentTypes /= length parents then
-      Left $ "Parent types not found for class " Prelude.++ (className c)
+    if length justParentTypes /= length parents then
+      Left $ "Parent types not found for class " Prelude.++ (className c) Prelude.++ (show justParentTypes) Prelude.++ (show parents)
     else
       Right $ (typeStart c):(Prelude.foldl (\acc t -> t:acc) [] $ L.concat justParentTypes)
     where
-      typeStart c = if (length $ (classTypeParams c)) > 0 then
-                GenericType (ClassType (Path (package Prelude.++ [className c]))) (classTypeParams c)
+      typeStart cl = if (length $ (classTypeParams cl)) > 0 then
+                GenericType (ClassType (Path (package Prelude.++ [className cl]))) (classTypeParams cl)
               else
-                ClassType (Path (package Prelude.++ [className c]))
+                ClassType (Path (package Prelude.++ [className cl]))
 
