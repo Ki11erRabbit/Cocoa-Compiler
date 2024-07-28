@@ -42,7 +42,7 @@ instance TypeUtils Class where
     if length parentTypes /= length parents then
       Left $ "Parent types not found for class " Prelude.++ (className c)
     else
-      Right $ Prelude.foldl (\acc t -> t:acc) [(typeStart c)] $ L.concat justParentTypes
+      Right $ (typeStart c):(Prelude.foldl (\acc t -> t:acc) [] $ L.concat justParentTypes)
     where
       typeStart c = if (length $ (classTypeParams c)) > 0 then
                 GenericType (ClassType (Path (package Prelude.++ [className c]))) (classTypeParams c)
