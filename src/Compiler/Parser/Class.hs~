@@ -1,0 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
+module Compiler.Parser.Class where
+
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import Compiler.Ast.Method
+import Compiler.Ast.Class
+import Compiler.Ast.Shared
+import Compiler.Parser.Shared
+import Compiler.Parser.Method
