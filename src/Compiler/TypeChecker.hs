@@ -10,7 +10,6 @@ import Data.HashMap.Strict as H
 import Data.HashSet as S
 import Data.Vector as V
 import Debug.Trace (trace)
-import Control.DeepSeq (deepseq)
 
 emptyMapWithObject :: H.HashMap [String] [Type]
 emptyMapWithObject = H.insert ["Object"] [ClassType (Path ["Object"])] H.empty
@@ -86,30 +85,61 @@ checkStatements [] _ _ _ = Right ()
 
 checkStatement :: Statement -> Type -> (H.HashMap [String] [Type]) -> [(H.HashMap [String] [Type])] -> Either String [(H.HashMap [String] [Type])]
 checkStatement (LetStmt (LetStatement (LetVar varName) (Just ty) expr)) methodType types localTypes = do
-  let exprTypes = inferExpr expr types localTypes
+  exprTypes <- inferExpr expr types localTypes
   if Prelude.elem ty exprTypes
     then Right ((H.insert [varName] [ty] H.empty):localTypes) else Left "Types do not match" {- TODO: add line numbers -}
 checkStatement (ReturnStmt (ReturnExpr expr)) (MethodType _ _ returnType) types localTypes = do
-  _ <- trace "Checking Return" $ return ()
-  let exprTypes = inferExpr expr types localTypes
+  exprTypes <- inferExpr expr types localTypes
   if Prelude.elem returnType exprTypes
-    then trace "right" $ Right localTypes else trace "left" $ Left "Return Type does not match"
+    then Right localTypes else Left "Return Type does not match"
+checkStatement (ReturnStmt ReturnUnit) (MethodType _ _ returnType) types localTypes =
+  case returnType of
+    (Primitive UnitPrimType) -> Right localTypes
+    _ -> Left "Return type does not match"
 checkStatement stmt methodType types localTypes = error "TODO"
 
 
 {- TODO: have a hashmap that goes from types to a hashmap of types for each class so we can typecheck members and methods -}
-inferExpr :: Expr -> (H.HashMap [String] [Type]) -> [(H.HashMap [String] [Type])] -> [Type]
-inferExpr (Literal (IntLit _)) _ _ = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)] 
-inferExpr (Literal (FloatLit _)) _ _ = [(Primitive F32PrimType), (Primitive F64PrimType)] 
-inferExpr (Literal (StringLit _)) _ _ = [ClassType (Path ["String"] )]
-inferExpr (Literal (BoolLit _)) _ _ = [Primitive BoolPrimType]
-inferExpr (Literal (CharLit _)) _ _ = [Primitive CharPrimType]
-inferExpr ThisExpr _ localTypes = lookupLocal localTypes ["this"]
-inferExpr SuperExpr _ localTypes = lookupLocal localTypes ["super"]
+inferExpr :: Expr -> (H.HashMap [String] [Type]) -> [(H.HashMap [String] [Type])] -> Either String [Type]
+inferExpr (Literal (IntLit _)) _ _ = return [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)] 
+inferExpr (Literal (FloatLit _)) _ _ = return [(Primitive F32PrimType), (Primitive F64PrimType)] 
+inferExpr (Literal (StringLit _)) _ _ = return [ClassType (Path ["String"] )]
+inferExpr (Literal (BoolLit _)) _ _ = return [Primitive BoolPrimType]
+inferExpr (Literal (CharLit _)) _ _ = return [Primitive CharPrimType]
+inferExpr ThisExpr _ localTypes = return $ lookupLocal localTypes ["this"]
+inferExpr SuperExpr _ localTypes = return $ lookupLocal localTypes ["super"]
 inferExpr (Paren expr) types localTypes = inferExpr expr types localTypes
-inferExpr NullExpr _ _ = [ClassType (Path ["Object"])]
-inferExpr (Var var) _ localTypes = lookupLocal localTypes [var]
-inferExpr (FieldAccess ThisExpr name) types localTypes = lookupLocal localTypes ["this",name]
+inferExpr NullExpr _ _ = return [ClassType (Path ["Object"])]
+inferExpr (Var var) _ localTypes = return $ lookupLocal localTypes [var]
+inferExpr (Cast (Primitive ty) expr) types localTypes = do
+  exprTypes <- inferExpr expr types localTypes
+  if exprTypes `contains` [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
+    then Right [(Primitive ty)]
+    else Left "Couldn't typecheck a primitive cast"
+inferExpr (Cast ty expr) types localTypes = do
+  error "casting for other types isn't implemented yet"
+inferExpr (FieldAccess ThisExpr name) types localTypes = return $ lookupLocal localTypes ["this",name]
+inferExpr (UnaryOp Neg (Literal (IntLit _))) _ _ = return [(Primitive I8PrimType), (Primitive I16PrimType), (Primitive I32PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
+inferExpr (UnaryOp Neg (Literal (FloatLit _))) _ _ = return [(Primitive F32PrimType), (Primitive F64PrimType)]
+inferExpr (UnaryOp Neg expr) types localTypes = do
+  exprTypes <- inferExpr expr types localTypes
+  if exprTypes `contains` [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)] {- TODO: add support for inferface impl -}
+    then Right exprTypes
+    else Left "Operand for - (unary) is an invalid type"
+inferExpr (BinaryOp LogicalAnd expr1 expr2) types localTypes = case ((inferExpr expr1 types localTypes), (inferExpr expr1 types localTypes)) of
+  (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
+  (Left msg, _) -> Left msg
+  (_, Left msg) -> Left msg
+  (Right leftList, Right rightList) -> if Prelude.elem (Primitive BoolPrimType) leftList && Prelude.elem (Primitive BoolPrimType) rightList
+    then Right [Primitive BoolPrimType]
+    else Left "Operands for && must be bools"
+inferExpr (BinaryOp LogicalOr expr1 expr2) types localTypes = case ((inferExpr expr1 types localTypes), (inferExpr expr1 types localTypes)) of
+  (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
+  (Left msg, _) -> Left msg
+  (_, Left msg) -> Left msg
+  (Right leftList, Right rightList) -> if Prelude.elem (Primitive BoolPrimType) leftList && Prelude.elem (Primitive BoolPrimType) rightList
+    then Right [Primitive BoolPrimType]
+    else Left "Operands for || must be bools"
 
 --inferExpr expr types localTypes
 
@@ -118,3 +148,10 @@ lookupLocal (current:rest) var = case current H.!? var of
   Just x -> x
   Nothing -> lookupLocal rest var
 lookupLocal [] _ = []
+
+
+contains :: Eq a => [a] -> [a] -> Bool
+contains source (check:rest) = if (Prelude.elem check source)
+  then True
+  else contains source rest
+contains _ [] = False

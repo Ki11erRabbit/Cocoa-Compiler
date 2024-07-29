@@ -3,6 +3,6 @@ package test;
 pub class Pineapple {
     pub x: u8;
     pub fn pen() u8 {
-        return "hello";
+        return this.x;
     }
 }
