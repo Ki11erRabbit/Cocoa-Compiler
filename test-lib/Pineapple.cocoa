@@ -1,9 +1,8 @@
 package test;
 
 pub class Pineapple {
-    pub fn pen() u8;
-    pub fn pen() u8;
-    pub fn pen() u8;
-    pub fn pen() u8;
-    
+    pub x: u8;
+    pub fn pen() u8 {
+        return "hello";
+    }
 }

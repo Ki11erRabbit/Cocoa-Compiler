@@ -37,10 +37,8 @@ data Field = Field
 
 instance TypeUtils Class where
   getTypes package types imports _parent c = do
-    _ <- trace ("types for class " ++ show types) $ return ()
-    _ <- trace "getting class types" $ return ()
     let parents = (Prelude.maybe (SuperClass (Path ["Object"]) []) (\x -> x) (superClass c)):(interfaces c)
-    let parentTypes = Prelude.filter (/= Nothing) $ Prelude.map (\path -> types H.!? (trace (show path) path)) $ L.concat $ Prelude.map (\(SuperClass (Path path) _) -> if length path == 1 && path /= ["Object"] then imports else [path]) parents
+    let parentTypes = Prelude.filter (/= Nothing) $ Prelude.map (\path -> types H.!? path) $ L.concat $ Prelude.map (\(SuperClass (Path path) _) -> if (length path == 1) && (path /= ["Object"]) then imports else [path]) parents
     let justParentTypes = Prelude.map fromJust parentTypes
     if length justParentTypes /= length parents then
       Left $ "Parent types not found for class " Prelude.++ (className c) Prelude.++ (show justParentTypes) Prelude.++ (show parents)
