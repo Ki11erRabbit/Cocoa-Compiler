@@ -35,7 +35,7 @@ checkFiles files (next:rest) types omt = do
   _ <- trace (show next Prelude.++ show rest) return $ ()
   let file = files V.! next
   (file', newTypes, newOMT) <- checkFile file types omt
-  let files' = V.update files (next, file')
+  let files' = V.update files $ V.singleton (next, file')
   checkFiles files' rest newTypes newOMT
 checkFiles files [] _ _ = Right files
 
@@ -44,7 +44,7 @@ checkFile File{packageDec=(PackageDec (Path package)), primaryClass=primaryClass
   let imports' = Prelude.map (\(ImportDec (Path path)) -> path) imports
   typesToAdd <- (getTypes package types imports' Nothing primaryClass)
   let newTypes = H.insert (package Prelude.++ [className primaryClass]) typesToAdd types
-  (class', types', omt') <- checkClass primaryClass typesToAdd newTypes omt package imports'
+  (class', types', omt') <- checkClass primaryClass typesToAdd newTypes omt (package, imports')
   Right (File (PackageDec (Path package)) imports class', types', omt')
   
   
@@ -109,14 +109,14 @@ checkStatement :: Statement -> [Statement] -> Type -> TypeMap -> [TypeMap] -> Ob
 checkStatement (LetStmt (LetStatement (LetVar varName (Just ty)) expr)) _ methodType types localTypes omt = do
   exprTypes <- inferExpr expr types localTypes omt
   if Prelude.elem ty exprTypes
-    then Right (LetStmt (LetStatement (LetVar varName) (Just ty) expr), ((H.insert [varName] [ty] H.empty):localTypes)) else Left "Types do not match" {- TODO: add line numbers -}
+    then Right (LetStmt (LetStatement (LetVar varName (Just ty)) expr), ((H.insert [varName] [ty] H.empty):localTypes)) else Left "Types do not match" {- TODO: add line numbers -}
 checkStatement (ReturnStmt (ReturnExpr expr)) _ (MethodType _ _ returnType) types localTypes omt = do
   exprTypes <- inferExpr expr types localTypes omt
   if Prelude.elem returnType exprTypes
-    then Right localTypes else Left "Return Type does not match"
+    then Right (ReturnStmt (ReturnExpr expr), localTypes) else Left "Return Type does not match"
 checkStatement (ReturnStmt ReturnUnit) _ (MethodType _ _ returnType) types localTypes omt =
   case returnType of
-    (Primitive UnitPrimType) -> Right localTypes
+    (Primitive UnitPrimType) -> Right (ReturnStmt (ReturnUnit), localTypes)
     _ -> Left "Return type does not match"
 checkStatement stmt restStmts methodType types localTypes omt = error "TODO"
 
