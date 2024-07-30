@@ -11,7 +11,7 @@ import Data.HashSet as S
 import Data.Vector as V
 import Debug.Trace (trace)
 
-data OMPValue = SuperRef Type | Direct (H.HashMap [String] [Type])
+data OMPValue = SuperRef Type | Direct TypeMap 
 
 type ObjectMemberTypes = H.HashMap Type [OMPValue] 
 type TypeMap = H.HashMap [String] [Type]
@@ -47,14 +47,18 @@ checkClass Class{className=className, members=members} classTypes types omt pack
   let classDirectOMTValue = Prelude.foldl (\memberTypes field -> case field of
                                       FieldMember (Field _ fieldName fieldType) -> H.insert (fieldName:[]) [fieldType] memberTypes
                                       _ -> memberTypes) H.empty members
-  let fieldTypes = H.insert ["this"] [Prelude.head classTypes] $ H.insert ["super"] (Prelude.tail classTypes) H.empty
+  let fieldTypes = H.insert ["this"] [Prelude.head classTypes] $ H.insert ["super"] [Prelude.head $ Prelude.tail classTypes] H.empty
   let localTypes = [fieldTypes]
   let methodTypes = Prelude.foldl (\acc member -> case member of
                                       MethodMember method -> ((methodName method), (getTypes package types imports (Just (Prelude.head classTypes)) method)):acc
                                       _ -> acc) [] members
   let (methodNames, methodTypes') = Prelude.unzip methodTypes
   methodTypes'' <- Prelude.sequence methodTypes' {- TODO: check subclasses and deal with overloading -}
-  let classDirectOMTValue' = Prelude.foldl (\acc (name, types) -> H.insert [name] types acc) classDirectOMTValue $ Prelude.zip methodNames methodTypes''
+  let classDirectOMTValue' = Prelude.foldl (\acc (name, types) ->
+                                              case acc H.!? [name] of
+                                                Just x -> H.insert [name] (types Prelude.++ x) acc
+                                                Nothing -> H.insert [name] types acc)
+                             classDirectOMTValue $ Prelude.zip methodNames methodTypes''
   let omtValue = (Direct classDirectOMTValue):(Prelude.map SuperRef $ Prelude.tail classTypes)
   let newOMT = H.insert (Prelude.head classTypes) omtValue omt
   let methods = Prelude.filter (\member -> case member of
@@ -106,7 +110,6 @@ checkStatement (ReturnStmt ReturnUnit) (MethodType _ _ returnType) types localTy
 checkStatement stmt methodType types localTypes omt = error "TODO"
 
 
-{- TODO: have a hashmap that goes from types to a hashmap of types for each class so we can typecheck members and methods -}
 inferExpr :: Expr -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String [Type]
 inferExpr (Literal (IntLit _)) _ _ _ = return [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)] 
 inferExpr (Literal (FloatLit _)) _ _ _ = return [(Primitive F32PrimType), (Primitive F64PrimType)] 
@@ -125,7 +128,28 @@ inferExpr (Cast (Primitive ty) expr) types localTypes omt = do
     else Left "Couldn't typecheck a primitive cast"
 inferExpr (Cast ty expr) types localTypes omt = do
   error "casting for other types isn't implemented yet"
-inferExpr (FieldAccess ThisExpr name) types localTypes _ = return $ lookupLocal localTypes ["this",name]
+inferExpr (FieldAccess expr name) types localTypes omt = do
+  exprTypes <- inferExpr expr types localTypes omt
+  case exprTypes of
+    (ty:[]) -> Right $ (getClassMembers ty omt) H.! [name]
+    _ -> Left "Too many possibilities for field access"
+inferExpr (Call body argExprs) types localTypes omt = do
+  methodTypes <- inferExpr body types localTypes omt
+  argExprTypes <- Prelude.sequence $ Prelude.map (\arg -> inferExpr arg types localTypes omt) argExprs
+  checkMethodType methodTypes argExprTypes
+  where
+    checkMethodType (method:rest) args = do
+      if checkMethodArgs method args
+        then case method of
+               MethodType _ _ retType -> Right [retType]
+               _ -> Left "field was not a method"
+        else checkMethodType rest args
+    checkMethodType [] args = Left "No methods match type signature"
+    checkMethodArgs (MethodType _ (argTy:xs) _) (arg:ys) = Prelude.elem argTy arg && checkMethodArgs xs ys
+    checkMethodArgs (MethodType _ [] _) [] = True
+    checkMethodArgs (MethodType _ _ _) _ = False
+    
+        
 inferExpr (UnaryOp Neg (Literal (IntLit _))) _ _ _ = return [(Primitive I8PrimType), (Primitive I16PrimType), (Primitive I32PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
 inferExpr (UnaryOp Neg (Literal (FloatLit _))) _ _ _ = return [(Primitive F32PrimType), (Primitive F64PrimType)]
 inferExpr (UnaryOp Neg expr) types localTypes omt = do
@@ -162,3 +186,10 @@ contains source (check:rest) = if (Prelude.elem check source)
   then True
   else contains source rest
 contains _ [] = False
+
+
+getClassMembers :: Type -> ObjectMemberTypes -> TypeMap
+getClassMembers ty omt = case omt H.! ty of
+  (SuperRef ty'):_ -> error "missing direct class"
+  (Direct tm):_ -> tm
+
