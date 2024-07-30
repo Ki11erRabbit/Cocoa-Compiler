@@ -14,7 +14,7 @@ data ForStatement = ForStatement LetVar Expr [Statement]
 data ReturnStatement = ReturnExpr Expr | ReturnUnit
   deriving (Show, Eq)
 
-data LetStatement = LetStatement LetVar (Maybe Type) Expr
+data LetStatement = LetStatement LetVar Expr
   deriving (Show, Eq)
 
 data BreakStatement = BreakStatement
@@ -26,7 +26,7 @@ data ContinueStatement = ContinueStatement
 data IfExpr = IfExpr Expr [Statement] (Maybe (Either [Statement] IfExpr))
   deriving (Show, Eq)
 
-data LetVar = LetVar String 
+data LetVar = LetVar String (Maybe Type)
   deriving (Show, Eq)
 
 

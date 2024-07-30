@@ -16,6 +16,9 @@ data OMPValue = SuperRef Type | Direct TypeMap
 type ObjectMemberTypes = H.HashMap Type [OMPValue] 
 type TypeMap = H.HashMap [String] [Type]
 
+type Package = [String]
+type Imports = [[String]]
+
 emptyMapWithObject :: H.HashMap [String] [Type]
 emptyMapWithObject = H.insert ["Object"] [ClassType (Path ["Object"])] H.empty
 
@@ -23,91 +26,99 @@ emptyMapWithoutObject :: H.HashMap [String] [Type]
 emptyMapWithoutObject = H.empty
 
 
-topLevelTypeCheck :: V.Vector File -> [Int] -> Either String ()
+topLevelTypeCheck :: V.Vector File -> [Int] -> Either String (V.Vector File)
 topLevelTypeCheck files order = checkFiles files order emptyMapWithObject H.empty
 
 
-checkFiles :: V.Vector File -> [Int] -> TypeMap -> ObjectMemberTypes -> Either String ()
+checkFiles :: V.Vector File -> [Int] -> TypeMap -> ObjectMemberTypes -> Either String (V.Vector File)
 checkFiles files (next:rest) types omt = do
   _ <- trace (show next Prelude.++ show rest) return $ ()
   let file = files V.! next
-  (newTypes, newOMT) <- checkFile file types omt
-  checkFiles files rest newTypes newOMT
-checkFiles files [] types omt = Right ()
+  (file', newTypes, newOMT) <- checkFile file types omt
+  let files' = V.update files (next, file')
+  checkFiles files' rest newTypes newOMT
+checkFiles files [] _ _ = Right files
 
-checkFile :: File -> TypeMap -> ObjectMemberTypes -> Either String (TypeMap, ObjectMemberTypes)
+checkFile :: File -> TypeMap -> ObjectMemberTypes -> Either String (File, TypeMap, ObjectMemberTypes)
 checkFile File{packageDec=(PackageDec (Path package)), primaryClass=primaryClass, imports=imports} types omt = do
   let imports' = Prelude.map (\(ImportDec (Path path)) -> path) imports
   typesToAdd <- (getTypes package types imports' Nothing primaryClass)
   let newTypes = H.insert (package Prelude.++ [className primaryClass]) typesToAdd types
-  checkClass primaryClass typesToAdd newTypes omt package imports'
+  (class', types', omt') <- checkClass primaryClass typesToAdd newTypes omt package imports'
+  Right (File (PackageDec (Path package)) imports class', types', omt')
   
-checkClass :: Class -> [Type] -> TypeMap -> ObjectMemberTypes -> [String] -> [[String]] -> Either String (TypeMap, ObjectMemberTypes)
-checkClass Class{className=className, members=members} classTypes types omt package imports = do
-  let classDirectOMTValue = Prelude.foldl (\memberTypes field -> case field of
-                                      FieldMember (Field _ fieldName fieldType) -> H.insert (fieldName:[]) [fieldType] memberTypes
-                                      _ -> memberTypes) H.empty members
-  let fieldTypes = H.insert ["this"] [Prelude.head classTypes] $ H.insert ["super"] [Prelude.head $ Prelude.tail classTypes] H.empty
-  let localTypes = [fieldTypes]
-  let methodTypes = Prelude.foldl (\acc member -> case member of
-                                      MethodMember method -> ((methodName method), (getTypes package types imports (Just (Prelude.head classTypes)) method)):acc
-                                      _ -> acc) [] members
-  let (methodNames, methodTypes') = Prelude.unzip methodTypes
-  methodTypes'' <- Prelude.sequence methodTypes' {- TODO: check subclasses and deal with overloading -}
-  let classDirectOMTValue' = Prelude.foldl (\acc (name, types) ->
-                                              case acc H.!? [name] of
-                                                Just x -> H.insert [name] (types Prelude.++ x) acc
-                                                Nothing -> H.insert [name] types acc)
-                             classDirectOMTValue $ Prelude.zip methodNames methodTypes''
-  let omtValue = (Direct classDirectOMTValue):(Prelude.map SuperRef $ Prelude.tail classTypes)
-  let newOMT = H.insert (Prelude.head classTypes) omtValue omt
-  let methods = Prelude.filter (\member -> case member of
-                                   MethodMember _ -> True
-                                   _ -> False) members
-  _ <- (Prelude.foldl (\acc result -> case (acc, result) of
-                                  (Left msg, Right _) -> Left msg
-                                  (Right _, Right _) -> Right ()
-                                  (Right _, Left msg) -> Left msg
-                                  (Left msg, Left msg2) -> Left (msg Prelude.++ "\n" Prelude.++ msg2)) (Right ())
-                $ Prelude.map (\(method, ty) -> checkMethod method ty types localTypes newOMT)
-                $ Prelude.zip methods $ Prelude.concat methodTypes'')
-  return $ (types, newOMT)
+  
+checkClass :: Class -> [Type] -> TypeMap -> ObjectMemberTypes -> (Package, Imports) -> Either String (Class, TypeMap, ObjectMemberTypes)
+checkClass class' classTypes types omt (package, imports) =
+  let Class{className=className, members=members} = class' in do
+    let oMTValue = Prelude.foldl (\memberTypes field -> case field of
+                                     FieldMember (Field _ fieldName fieldType) ->
+                                       H.insert (fieldName:[]) [fieldType] memberTypes
+                                     _ -> memberTypes)
+                   H.empty members
+    let objectVars = H.insert ["this"] [Prelude.head classTypes]
+                     $ H.insert ["super"] [Prelude.head $ Prelude.tail classTypes] H.empty
+    let localTypes = [objectVars]
+    let methodTypes = Prelude.foldl (\acc member -> case member of
+                                        MethodMember method -> ((methodName method), (getTypes package types imports (Just (Prelude.head classTypes)) method)):acc
+                                        _ -> acc)
+          [] members
+    let (methodNames, methodTypes') = Prelude.unzip methodTypes
+    methodTypes'' <- Prelude.sequence methodTypes' {- TODO: check subclasses and deal with overloading -}
+    let oMTValue' = Prelude.foldl (\acc (name, types) ->
+                                                case acc H.!? [name] of
+                                                  Just x -> H.insert [name] (types Prelude.++ x) acc
+                                                  Nothing -> H.insert [name] types acc)
+                               oMTValue $ Prelude.zip methodNames methodTypes''
+    let omtValue'' = (Direct oMTValue'):(Prelude.map SuperRef $ Prelude.tail classTypes)
+    let newOMT = H.insert (Prelude.head classTypes) omtValue'' omt
+    let methods = Prelude.filter methodFilter members
+    methods' <- Prelude.sequence $ Prelude.map (\(method, ty) -> checkMethod method ty types localTypes newOMT) $ Prelude.zip methods $ Prelude.concat methodTypes''
+    let fields = (Prelude.filter filterOutMethods members) Prelude.++ methods'
+    return $ (class' {members = fields},types, newOMT)
+  where
+    methodFilter (MethodMember _) = True
+    methodFilter _ = False
+    filterOutMethods (MethodMember _) = False
+    filterOutMethods _ = True
+    
 
 
-checkMethod :: Member -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String ()
-checkMethod (MethodMember (Method{params=params, body=Prototype})) _ types localTypes _ = Right ()
-checkMethod (MethodMember (Method{params=params, body=(Native _)})) _ types localTypes _ = Right ()
-checkMethod (MethodMember (Method{params=params, body=(Redirect _)})) _ types localTypes _ = Right ()
-checkMethod (MethodMember (Method{params=params, body=(MethodBody stmts)})) methodType types localTypes omt = do
-                let localTypes' = (loadParams params):localTypes
-                checkStatements stmts methodType types localTypes omt
+checkMethod :: Member -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String Member
+checkMethod (MethodMember method) methodType types localTypes omt =
+  case method of
+    (Method{params=params, body=(MethodBody stmts)}) -> do
+      let localTypes' = (loadParams params):localTypes
+      stmts' <- checkStatements stmts methodType types localTypes omt []
+      Right (MethodMember (method { body = MethodBody stmts' }))
+    _ -> Right $ MethodMember method 
   where
     loadParams (Param{..}:rest) = H.insert [paramName] [paramType] (loadParams rest)
     loadParams [] = H.empty
 checkMethod _ _ _ _ _ = Left "Method was not a method"
   
 
-checkStatements :: [Statement] -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String ()
-checkStatements (stmt:rest) methodType types localTypes omt = do
-  localTypes' <- checkStatement stmt methodType types localTypes omt
-  checkStatements rest methodType types localTypes' omt
-checkStatements [] _ _ _ _ = Right ()
+checkStatements :: [Statement] -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> [Statement] -> Either String [Statement]
+checkStatements (stmt:rest) methodType types localTypes omt acc = do
+  (stmt', localTypes') <- checkStatement stmt rest methodType types localTypes omt
+  checkStatements rest methodType types localTypes' omt (stmt':acc)
+checkStatements [] _ _ _ _ stmts = Right $ Prelude.reverse stmts
 
 
-checkStatement :: Statement -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String [TypeMap]
-checkStatement (LetStmt (LetStatement (LetVar varName) (Just ty) expr)) methodType types localTypes omt = do
+checkStatement :: Statement -> [Statement] -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String (Statement, [TypeMap])
+checkStatement (LetStmt (LetStatement (LetVar varName (Just ty)) expr)) _ methodType types localTypes omt = do
   exprTypes <- inferExpr expr types localTypes omt
   if Prelude.elem ty exprTypes
-    then Right ((H.insert [varName] [ty] H.empty):localTypes) else Left "Types do not match" {- TODO: add line numbers -}
-checkStatement (ReturnStmt (ReturnExpr expr)) (MethodType _ _ returnType) types localTypes omt = do
+    then Right (LetStmt (LetStatement (LetVar varName) (Just ty) expr), ((H.insert [varName] [ty] H.empty):localTypes)) else Left "Types do not match" {- TODO: add line numbers -}
+checkStatement (ReturnStmt (ReturnExpr expr)) _ (MethodType _ _ returnType) types localTypes omt = do
   exprTypes <- inferExpr expr types localTypes omt
   if Prelude.elem returnType exprTypes
     then Right localTypes else Left "Return Type does not match"
-checkStatement (ReturnStmt ReturnUnit) (MethodType _ _ returnType) types localTypes omt =
+checkStatement (ReturnStmt ReturnUnit) _ (MethodType _ _ returnType) types localTypes omt =
   case returnType of
     (Primitive UnitPrimType) -> Right localTypes
     _ -> Left "Return type does not match"
-checkStatement stmt methodType types localTypes omt = error "TODO"
+checkStatement stmt restStmts methodType types localTypes omt = error "TODO"
 
 
 inferExpr :: Expr -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String [Type]

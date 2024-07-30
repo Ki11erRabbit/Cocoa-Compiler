@@ -97,25 +97,25 @@ parseLetStatement = do
   _ <- skipParser
   varName <- parseLetVar
   _ <- skipParser
-  t <- option Nothing $ do
-    _ <- char ':'
-    _ <- skipParser
-    t <- parseType
-    return $ Just t
-  _ <- skipParser
   _ <- char '='
   _ <- skipParser
   expr <- parseExpr
   _ <- skipParser
   _ <- char ';'
   _ <- skipParser
-  return $ LetStmt $ LetStatement varName t expr
+  return $ LetStmt $ LetStatement varName expr
 
 parseLetVar :: Parser LetVar
 parseLetVar = do
   varName <- myidentifier
   _ <- skipParser
-  return $ LetVar varName
+  t <- option Nothing $ do
+    _ <- char ':'
+    _ <- skipParser
+    t <- parseType
+    return $ Just t
+  _ <- skipParser
+  return $ LetVar varName t
     
 parseAssignmentStatement :: Parser Statement
 parseAssignmentStatement = try $ do
