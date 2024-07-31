@@ -31,6 +31,11 @@ library
                      , Compiler.Parser.File
                      , Compiler.FileGraph
                      , Compiler.TypeChecker
+                     , Compiler.SSA
+                     , Compiler.SSA.Class
+                     , Compiler.SSA.File
+                     , Compiler.SSA.Method
+                     , Compiler.SSA.Statement
   build-depends:       base >= 4.7 && < 5
                      , megaparsec
                      , parser-combinators
