@@ -38,9 +38,9 @@ convertClass AstClass.Class{ AstClass.visibility=visibility, AstClass.className=
 convertMembers :: [AstClass.Member] -> [Compiler.SSA.Class.Member]
 convertMembers [] = []
 convertMembers (m:ms) = (case m of
-  AstClass.FieldMember f -> AstClass.FieldMember f
-  AstClass.MethodMember m -> AstClass.MethodMember (convertMethod m)
-  AstClass.ClassMember c -> AstClass.ClassMember (convertClass c)
+  AstClass.FieldMember f -> Compiler.SSA.Class.FieldMember f
+  AstClass.MethodMember m -> Compiler.SSA.Class.MethodMember (convertMethod m)
+  AstClass.ClassMember c -> Compiler.SSA.Class.ClassMember (convertClass c)
   ):(convertMembers ms)
   
   

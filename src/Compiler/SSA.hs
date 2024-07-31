@@ -1,6 +1,6 @@
 module Compiler.SSA (convertAstToSsa) where
 
-import Compiler.AST.File as ASTFile
+import Compiler.Ast.File as ASTFile
 import Compiler.SSA.File as SSAFile
 import Compiler.SSA.Class
 import Compiler.SSA.Shared
