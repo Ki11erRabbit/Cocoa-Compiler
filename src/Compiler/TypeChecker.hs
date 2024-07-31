@@ -107,37 +107,37 @@ checkStatements [] _ _ _ _ stmts = Right $ Prelude.reverse stmts
 
 checkStatement :: Statement -> [Statement] -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String (Statement, [TypeMap])
 checkStatement (LetStmt (LetStatement (LetVar varName (Just ty)) expr)) _ methodType types localTypes omt = do
-  exprTypes <- inferExpr expr methodType types localTypes omt
+  (expr', exprTypes) <- inferExpr expr methodType types localTypes omt
   if Prelude.elem ty exprTypes
-    then Right (LetStmt (LetStatement (LetVar varName (Just ty)) expr), ((H.insert [varName] [ty] H.empty):localTypes)) else Left "Types do not match" {- TODO: add line numbers -}
+    then Right (LetStmt (LetStatement (LetVar varName (Just ty)) expr'), ((H.insert [varName] [ty] H.empty):localTypes)) else Left "Types do not match" {- TODO: add line numbers -}
 checkStatement (ReturnStmt (ReturnExpr expr)) _ (MethodType mx my returnType) types localTypes omt = do
-  exprTypes <- inferExpr expr (MethodType mx my returnType) types localTypes omt
+  (expr', exprTypes) <- inferExpr expr (MethodType mx my returnType) types localTypes omt
   if Prelude.elem returnType exprTypes
-    then Right (ReturnStmt (ReturnExpr expr), localTypes) else Left "Return Type does not match"
+    then Right (ReturnStmt (ReturnExpr expr'), localTypes) else Left "Return Type does not match"
 checkStatement (ReturnStmt ReturnUnit) _ (MethodType _ _ returnType) types localTypes omt =
   case returnType of
     (Primitive UnitPrimType) -> Right (ReturnStmt (ReturnUnit), localTypes)
     _ -> Left "Return type does not match"
 checkStatement (WhileStmt (WhileStatement test body)) restStmts methodType types localTypes omt = do
-  testExprs <- inferExpr test methodType types localTypes omt
+  (test', testExprs) <- inferExpr test methodType types localTypes omt
   if not $ Prelude.elem (Primitive BoolPrimType) testExprs
     then Left "Test expression for while was not a boolean"
     else do
     body' <- checkStatements body methodType types localTypes omt []
-    Right $ (WhileStmt (WhileStatement test body'), localTypes)
+    Right $ (WhileStmt (WhileStatement test' body'), localTypes)
 checkStatement (IfStmt ifExpr) restStmts methodType types localTypes omt = do
   ifExpr' <- checkIfExpr ifExpr
   Right (IfStmt ifExpr', localTypes)
   where
     checkIfExpr (IfExpr test thenBody Nothing) = do
-      testExprs <- inferExpr test methodType types localTypes omt
+      (test', testExprs) <- inferExpr test methodType types localTypes omt
       if not $ Prelude.elem (Primitive BoolPrimType) testExprs
         then Left "Test expression for if was not a boolean"
         else do
         body' <- checkStatements thenBody methodType types localTypes omt []
-        Right $ IfExpr test body' Nothing
+        Right $ IfExpr test' body' Nothing
     checkIfExpr (IfExpr test thenBody (Just (Left elseBody))) = do
-      testExprs <- inferExpr test methodType types localTypes omt
+      (test', testExprs) <- inferExpr test methodType types localTypes omt
       if not $ Prelude.elem (Primitive BoolPrimType) testExprs
         then Left "Test expression for if was not a boolean"
         else do
@@ -145,42 +145,46 @@ checkStatement (IfStmt ifExpr) restStmts methodType types localTypes omt = do
         elseBody' <- checkStatements elseBody methodType types localTypes omt []
         Right $ IfExpr test thenBody' (Just (Left elseBody'))
     checkIfExpr (IfExpr test thenBody (Just (Right ifExr))) = do
-      testExprs <- inferExpr test methodType types localTypes omt
+      (test', testExprs) <- inferExpr test methodType types localTypes omt
       if not $ Prelude.elem (Primitive BoolPrimType) testExprs
         then Left "Test expression for if was not a boolean"
         else do
         thenBody' <- checkStatements thenBody methodType types localTypes omt []
         ifExpr' <- checkIfExpr ifExpr
-        Right $ IfExpr test thenBody' (Just (Right ifExpr'))
+        Right $ IfExpr test' thenBody' (Just (Right ifExpr'))
 checkStatement stmt restStmts methodType types localTypes omt = error "TODO"
 
 
-inferExpr :: Expr -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String [Type]
-inferExpr (Literal (IntLit _)) _ _ _ _ = return [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)] 
-inferExpr (Literal (FloatLit _)) _ _ _ _ = return [(Primitive F32PrimType), (Primitive F64PrimType)] 
-inferExpr (Literal (StringLit _)) _ _ _ _ = return [ClassType (Path ["String"] )]
-inferExpr (Literal (BoolLit _)) _ _ _ _ = return [Primitive BoolPrimType]
-inferExpr (Literal (CharLit _)) _ _ _ _ = return [Primitive CharPrimType]
-inferExpr ThisExpr _ _ localTypes omt = return $ lookupLocal localTypes ["this"]
-inferExpr SuperExpr _ _ localTypes omt = return $ lookupLocal localTypes ["super"]
-inferExpr (Paren expr) methodType types localTypes omt = inferExpr expr methodType types localTypes omt
-inferExpr NullExpr _ _ _ _ = return [ClassType (Path ["Object"])]
-inferExpr (Var var) _ _ localTypes _ = return $ lookupLocal localTypes [var]
-inferExpr (Cast (Primitive ty) expr) methodType  types localTypes omt = do
-  exprTypes <- inferExpr expr methodType types localTypes omt
+inferExpr :: Expr -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String (Expr, [Type])
+inferExpr (Literal (IntLit x)) _ _ _ _ = return ((Literal (IntLit x)), [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]) 
+inferExpr (Literal (FloatLit x)) _ _ _ _ = return ((Literal (FloatLit x)), [(Primitive F32PrimType), (Primitive F64PrimType)]) 
+inferExpr (Literal (StringLit x)) _ _ _ _ = return (Literal (StringLit x), [ClassType (Path ["String"] )])
+inferExpr (Literal (BoolLit x)) _ _ _ _ = return (Literal (BoolLit x), [Primitive BoolPrimType])
+inferExpr (Literal (CharLit x)) _ _ _ _ = return (Literal (CharLit x), [Primitive CharPrimType])
+inferExpr ThisExpr _ _ localTypes omt = return (ThisExpr, lookupLocal localTypes ["this"])
+inferExpr SuperExpr _ _ localTypes omt = return (SuperExpr, lookupLocal localTypes ["super"])
+inferExpr (Paren expr) methodType types localTypes omt = do
+  (expr', types') <- inferExpr expr methodType types localTypes omt
+  Right ((Paren expr'), types')
+inferExpr NullExpr _ _ _ _ = return (NullExpr, [ClassType (Path ["Object"])])
+inferExpr (Var var) _ _ localTypes _ = return ((Var var), lookupLocal localTypes [var])
+inferExpr (Cast (Primitive ty) expr) methodType types localTypes omt = do
+  (expr', exprTypes) <- inferExpr expr methodType types localTypes omt
   if exprTypes `contains` [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
-    then Right [(Primitive ty)]
+    then Right (Cast (Primitive ty) expr', [(Primitive ty)])
     else Left "Couldn't typecheck a primitive cast"
-inferExpr (Cast ty expr) _ types localTypes omt = Right [ty] -- TODO: Warn user about casting 
+inferExpr (Cast ty expr) _ types localTypes omt = Right (Cast ty expr, [ty]) -- TODO: Warn user about casting as well as make sure that it is only object types
 inferExpr (FieldAccess expr name) methodType types localTypes omt = do
-  exprTypes <- inferExpr expr methodType types localTypes omt
+  (expr', exprTypes) <- inferExpr expr methodType types localTypes omt
   case exprTypes of
-    (ty:[]) -> Right $ (getClassMembers ty omt) H.! [name]
+    (ty:[]) -> Right (FieldAccess expr' name, (getClassMembers ty omt) H.! [name])
     _ -> Left "Too many possibilities for field access"
 inferExpr (Call body argExprs) methodType types localTypes omt = do
-  methodTypes <- inferExpr body methodType types localTypes omt
-  argExprTypes <- Prelude.sequence $ Prelude.map (\arg -> inferExpr arg methodType types localTypes omt) argExprs
-  checkMethodType methodTypes argExprTypes
+  (body', methodTypes) <- inferExpr body methodType types localTypes omt
+  out <- Prelude.sequence $ Prelude.map (\arg -> inferExpr arg methodType types localTypes omt) argExprs
+  let (argExprs', argExprTypes) = Prelude.unzip out
+  types' <- checkMethodType methodTypes argExprTypes
+  Right (Call body' argExprs', types')
   where
     checkMethodType :: [Type] -> [[Type]] -> Either String [Type]
     checkMethodType (method:rest) args = do
@@ -195,12 +199,12 @@ inferExpr (Call body argExprs) methodType types localTypes omt = do
     checkMethodArg (argTy:xs) (arg:ys) = Prelude.elem argTy arg && checkMethodArgs xs ys
     checkMethodArgs [] [] = True
     checkMethodArgs [] _ = False
-inferExpr (UnaryOp Neg (Literal (IntLit _))) _ _ _ _ = return [(Primitive I8PrimType), (Primitive I16PrimType), (Primitive I32PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
-inferExpr (UnaryOp Neg (Literal (FloatLit _))) _ _ _ _ = return [(Primitive F32PrimType), (Primitive F64PrimType)]
+inferExpr (UnaryOp Neg (Literal (IntLit x))) _ _ _ _ = return ((UnaryOp Neg (Literal (IntLit x))), [(Primitive I8PrimType), (Primitive I16PrimType), (Primitive I32PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)])
+inferExpr (UnaryOp Neg (Literal (FloatLit x))) _ _ _ _ = return ((UnaryOp Neg (Literal (FloatLit x))), [(Primitive F32PrimType), (Primitive F64PrimType)])
 inferExpr (UnaryOp Neg expr) methodType types localTypes omt = do
-  exprTypes <- inferExpr expr methodType types localTypes omt
+  (expr', exprTypes) <- inferExpr expr methodType types localTypes omt
   if exprTypes `contains` [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)] {- TODO: add support for inferface impl -}
-    then Right exprTypes
+    then Right (expr', exprTypes)
     else Left "Operand for - (unary) is an invalid type"
 inferExpr (BinaryOp op expr1 expr2) methodType types localTypes omt = checkBinOp op expr1 expr2 methodType types localTypes omt
 inferExpr (IfExprExpr (IfExpr test thenBody elsePart)) methodType types localTypes omt = do
@@ -212,31 +216,31 @@ inferExpr (IfExprExpr (IfExpr test thenBody elsePart)) methodType types localTyp
       if not $ Prelude.elem (Primitive BoolPrimType) testExprs
         then Left "Test expression for if was not a boolean"
         else do
-        thenBodyTypes <- inferStatements thenBody methodType types localTypes omt
-        returnTypes <- handleElsePart elsePart thenBodyTypes
-        Right returnTypes
+        (thenBody', thenBodyTypes) <- inferStatements thenBody methodType types localTypes omt
+        (elsePart', returnTypes) <- handleElsePart elsePart thenBodyTypes
+        Right (IfExprExpr (IfExpr test thenBody' elsePart'), returnTypes)
     inferIfExpr (IfExpr test thenBody elsePart) returnTypes = do
       testExprs <- inferExpr test types localTypes omt
       if not $ Prelude.elem (Primitive BoolPrimType) testExprs
         then Left "Test expression for if was not a boolean"
         else do
-        thenBodyTypes <- inferStatements thenBody methodType types localTypes omt
-        returnTypes' <- handleElsePart elsePart $ intersect thenBodyTypes returnTypes
-        Right returnTypes'
+        (thenBody', thenBodyTypes) <- inferStatements thenBody methodType types localTypes omt
+        (elsePart', returnTypes) <- handleElsePart elsePart $ intersect thenBodyTypes returnTypes
+        Right (IfExprExpr (IfExpr test thenBody' elsePart'), returnTypes')
     handleElsePart (Just (Left elseBody)) returnTypes = do
-      elseBodyTypes <- inferStatements elseBody methodType types localTypes omt
+      (elseBody', elseBodyTypes) <- inferStatements elseBody methodType types localTypes omt
       let intersection = intersect returnTypes elseBodyTypes
       if Prelude.length intersection == 0 then
         Left "If expression body types don't match"
         else
-        Right intersection
+        Right ((Just (Left elseBody')), intersection)
     handleElsePart (Just (Right ifExpr)) returnTypes = inferIfExpr ifExpr returnTypes
       
   
 
 --inferExpr expr types localTypes
 
-checkBinOp :: BinaryOp -> Expr -> Expr -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String [Type]
+checkBinOp :: BinaryOp -> Expr -> Expr -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String (Expr, [Type])
 checkBinOp LogicalAnd expr1 expr2 methodType types localTypes omt = do
   let expr1Types = inferExpr expr1 methodType types localTypes omt
   let expr2Types = inferExpr expr2 methodType types localTypes omt
@@ -244,9 +248,9 @@ checkBinOp LogicalAnd expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if Prelude.elem (Primitive BoolPrimType) leftList && Prelude.elem (Primitive BoolPrimType) rightList
-      then Right [Primitive BoolPrimType]
+      then Right (BinaryOp LogicalAnd expr1' expr2', [Primitive BoolPrimType])
       else Left "Operands for && must be bools"
 checkBinOp LogicalOr expr1 expr2 methodType types localTypes omt = do
   let expr1Types = inferExpr expr1 methodType types localTypes omt
@@ -255,9 +259,9 @@ checkBinOp LogicalOr expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if Prelude.elem (Primitive BoolPrimType) leftList && Prelude.elem (Primitive BoolPrimType) rightList
-      then Right [Primitive BoolPrimType]
+      then Right (BinaryOp LogicalOr expr1' expr2', [Primitive BoolPrimType])
       else Left "Operands for || must be bools"
 checkBinOp Eq expr1 expr2 methodType types localTypes omt = do
   let expr1Types = inferExpr expr1 methodType types localTypes omt
@@ -266,9 +270,9 @@ checkBinOp Eq expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` eqOpTypes && rightList `contains` eqOpTypes
-      then Right [(Primitive BoolPrimType)]
+      then Right (BinaryOp Eq expr1' expr2', [(Primitive BoolPrimType)])
       else Left "Operands for == must be Numbers, Chars, or Booleans(for now)"
   where
     eqOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType), (Primitive CharPrimType), (Primitive BoolPrimType)]
@@ -279,9 +283,9 @@ checkBinOp Neq expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` neqOpTypes && rightList `contains` neqOpTypes
-      then Right [(Primitive BoolPrimType)]
+      then Right (BinaryOp Neq expr1' expr2', [(Primitive BoolPrimType)])
       else Left "Operands for != must be Numbers, Chars, or Booleans(for now)"
   where
     neqOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType), (Primitive CharPrimType), (Primitive BoolPrimType)]
@@ -292,9 +296,9 @@ checkBinOp Lt expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` ltOpTypes && rightList `contains` ltOpTypes
-      then Right [(Primitive BoolPrimType)]
+      then Right (BinaryOp Lt expr1' expr2', [(Primitive BoolPrimType)])
       else Left "Operands for < must be Numbers or Chars (for now)"
   where
     ltOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType), (Primitive CharPrimType)]
@@ -305,9 +309,9 @@ checkBinOp Gt expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` gtOpTypes && rightList `contains` gtOpTypes
-      then Right [(Primitive BoolPrimType)]
+      then Right (BinaryOp Gt expr1' expr2', [(Primitive BoolPrimType)])
       else Left "Operands for > must be Numbers or Chars (for now)"
   where
     gtOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType), (Primitive CharPrimType)]
@@ -318,10 +322,10 @@ checkBinOp Le expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` leOpTypes && rightList `contains` leOpTypes
-      then Right [(Primitive BoolPrimType)]
-      else Left "Operands for > must be Numbers or Chars (for now)"
+      then Right (BinaryOp Le expr1' expr2', [(Primitive BoolPrimType)])
+      else Left "Operands for >= must be Numbers or Chars (for now)"
   where
     leOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType), (Primitive CharPrimType)]
 checkBinOp Ge expr1 expr2 methodType types localTypes omt = do
@@ -331,10 +335,10 @@ checkBinOp Ge expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` geOpTypes && rightList `contains` geOpTypes
-      then Right [(Primitive BoolPrimType)]
-      else Left "Operands for > must be Numbers or Chars (for now)"
+      then Right (BinaryOp Ge expr1' expr2', [(Primitive BoolPrimType)])
+      else Left "Operands for >= must be Numbers or Chars (for now)"
   where
     geOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType), (Primitive CharPrimType)]
 checkBinOp Add expr1 expr2 methodType types localTypes omt = do
@@ -344,9 +348,9 @@ checkBinOp Add expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` addOpTypes && rightList `contains` addOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp Add expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for + must be Numbers (for now)"
   where
     addOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
@@ -357,9 +361,9 @@ checkBinOp Sub expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` subOpTypes && rightList `contains` subOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp Sub expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for - must be Numbers (for now)"
   where
     subOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
@@ -370,9 +374,9 @@ checkBinOp Mul expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` mulOpTypes && rightList `contains` mulOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp Mul expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for * must be Numbers (for now)"
   where
     mulOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
@@ -383,9 +387,9 @@ checkBinOp Div expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` divOpTypes && rightList `contains` divOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp Div expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for / must be Numbers (for now)"
   where
     divOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
@@ -396,9 +400,9 @@ checkBinOp Mod expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` modOpTypes && rightList `contains` modOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp Mod expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for % must be Numbers (for now)"
   where
     modOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType), (Primitive F32PrimType), (Primitive F64PrimType)]
@@ -409,9 +413,9 @@ checkBinOp BitAnd expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` andOpTypes && rightList `contains` andOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp BitAnd expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for & must be Integers (for now)"
   where
     andOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType)]
@@ -422,9 +426,9 @@ checkBinOp BitOr expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` orOpTypes && rightList `contains` orOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp BitOr expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for | must be Integers (for now)"
   where
     orOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType)]
@@ -435,9 +439,9 @@ checkBinOp BitXor expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` xorOpTypes && rightList `contains` xorOpTypes
-      then Right $ if Prelude.length leftList < Prelude.length rightList then leftList else rightList
+      then Right (BinaryOp BitXor expr1' expr2', if Prelude.length leftList < Prelude.length rightList then leftList else rightList)
       else Left "Operands for ^ must be Integers (for now)"
   where
     xorOpTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType)]
@@ -448,9 +452,9 @@ checkBinOp LShift expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` opTypes && Prelude.elem amountType rightList
-      then Right leftList
+      then Right (BinaryOp LShift expr1' expr2', leftList)
       else Left "Operands for << must be Integers (for now)"
   where
     opTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType)]
@@ -462,9 +466,9 @@ checkBinOp RShift expr1 expr2 methodType types localTypes omt = do
     (Left leftMsg, Left rightMsg) -> Left (leftMsg Prelude.++ "\n" Prelude.++ rightMsg)
     (Left msg, _) -> Left msg
     (_, Left msg) -> Left msg
-    (Right leftList, Right rightList) ->
+    (Right (expr1', leftList), Right (expr2', rightList)) ->
       if leftList `contains` opTypes && Prelude.elem amountType rightList
-      then Right leftList
+      then Right (BinaryOp RShift expr1' expr2', leftList)
       else Left "Operands for >> must be Integers (for now)"
   where
     opTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType)]
