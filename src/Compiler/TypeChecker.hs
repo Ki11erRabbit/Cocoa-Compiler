@@ -208,25 +208,28 @@ inferExpr (UnaryOp Neg expr) methodType types localTypes omt = do
     else Left "Operand for - (unary) is an invalid type"
 inferExpr (BinaryOp op expr1 expr2) methodType types localTypes omt = checkBinOp op expr1 expr2 methodType types localTypes omt
 inferExpr (IfExprExpr (IfExpr test thenBody elsePart)) methodType types localTypes omt = do
-  inferIfExpr (IfExpr test thenBody elsePart) []
+  (ifExpr', outTypes) <- inferIfExpr (IfExpr test thenBody elsePart) []
+  Right (IfExprExpr ifExpr', outTypes)
   where
+    inferIfExpr :: IfExpr -> [Type] -> Either String (IfExpr, [Type]) 
     inferIfExpr (IfExpr test thenBody Nothing) [] = Left "if expression requires else block"
     inferIfExpr (IfExpr test thenBody elsePart) [] = do
-      testExprs <- inferExpr test methodType types localTypes omt
+      (test', testExprs) <- inferExpr test methodType types localTypes omt
       if not $ Prelude.elem (Primitive BoolPrimType) testExprs
         then Left "Test expression for if was not a boolean"
         else do
         (thenBody', thenBodyTypes) <- inferStatements thenBody methodType types localTypes omt
         (elsePart', returnTypes) <- handleElsePart elsePart thenBodyTypes
-        Right (IfExprExpr (IfExpr test thenBody' elsePart'), returnTypes)
+        Right (IfExpr test' thenBody' elsePart', returnTypes)
     inferIfExpr (IfExpr test thenBody elsePart) returnTypes = do
-      testExprs <- inferExpr test types localTypes omt
+      (test', testExprs) <- inferExpr test methodType types localTypes omt
       if not $ Prelude.elem (Primitive BoolPrimType) testExprs
         then Left "Test expression for if was not a boolean"
         else do
         (thenBody', thenBodyTypes) <- inferStatements thenBody methodType types localTypes omt
-        (elsePart', returnTypes) <- handleElsePart elsePart $ intersect thenBodyTypes returnTypes
-        Right (IfExprExpr (IfExpr test thenBody' elsePart'), returnTypes')
+        (elsePart', returnTypes') <- handleElsePart elsePart $ intersect thenBodyTypes returnTypes
+        Right (IfExpr test' thenBody' elsePart', returnTypes')
+    handleElsePart :: (Maybe (Either [Statement] IfExpr)) -> [Type] -> Either String (Maybe (Either [Statement] IfExpr), [Type])
     handleElsePart (Just (Left elseBody)) returnTypes = do
       (elseBody', elseBodyTypes) <- inferStatements elseBody methodType types localTypes omt
       let intersection = intersect returnTypes elseBodyTypes
@@ -234,7 +237,9 @@ inferExpr (IfExprExpr (IfExpr test thenBody elsePart)) methodType types localTyp
         Left "If expression body types don't match"
         else
         Right ((Just (Left elseBody')), intersection)
-    handleElsePart (Just (Right ifExpr)) returnTypes = inferIfExpr ifExpr returnTypes
+    handleElsePart (Just (Right ifExpr)) returnTypes = do
+      (ifExpr', returnTypes') <- inferIfExpr ifExpr returnTypes
+      Right (Just (Right ifExpr'), returnTypes')
       
   
 
@@ -473,6 +478,27 @@ checkBinOp RShift expr1 expr2 methodType types localTypes omt = do
   where
     opTypes = [(Primitive U8PrimType), (Primitive I8PrimType), (Primitive U16PrimType), (Primitive I16PrimType), (Primitive U32PrimType), (Primitive I32PrimType), (Primitive U64PrimType), (Primitive I64PrimType)]
     amountType = Primitive U32PrimType
+
+
+
+inferStatements :: [Statement] -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String ([Statement], [Type])
+inferStatements statements methodType types localTypes omt = inferStatementsLoop statements localTypes [Primitive UnitPrimType] []
+  where
+    inferStatementsLoop (stmt:rest) locTypes returnTypes acc = do
+      (stmt', outTypes, localTypes') <- inferStatement stmt rest methodType types locTypes omt
+      inferStatementsLoop rest localTypes' outTypes (stmt':acc)
+    inferStatementsLoop [] _ returnTypes acc = Right (Prelude.reverse acc, returnTypes)
+
+
+inferStatement :: Statement -> [Statement] -> Type -> TypeMap -> [TypeMap] -> ObjectMemberTypes -> Either String (Statement, [Type], [TypeMap])
+inferStatement (Hanging expr) _ methodType types localTypes omt = do
+  (expr', outTypes) <- inferExpr expr methodType types localTypes omt
+  Right (Hanging expr', outTypes, localTypes)
+inferStatement stmt stmts methodType types localTypes omt = do
+  (stmt', localTypes') <- checkStatement stmt stmts methodType types localTypes omt
+  Right (stmt', [Primitive UnitPrimType], localTypes')
+
+
 
 lookupLocal :: [H.HashMap [String] [Type]] -> [String] -> [Type]
 lookupLocal (current:rest) var = case current H.!? var of
