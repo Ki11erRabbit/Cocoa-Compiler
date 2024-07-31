@@ -3,6 +3,13 @@ package test;
 pub class Pineapple {
     pub x: u8;
     pub fn pen() u8 {
-        return 0 + 0;
+        if this.x == 0 {
+            return 1;
+        } else {
+            return 0;
+        }
+        while this.x < 10 {
+            this.x = this.x + 1;
+        }
     }
 }

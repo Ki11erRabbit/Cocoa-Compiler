@@ -114,6 +114,10 @@ checkStatement (ReturnStmt (ReturnExpr expr)) _ (MethodType mx my returnType) ty
   (expr', exprTypes) <- inferExpr expr (MethodType mx my returnType) types localTypes omt
   if Prelude.elem returnType exprTypes
     then Right (ReturnStmt (ReturnExpr expr'), localTypes) else Left "Return Type does not match"
+checkStatement (Hanging expr) _ (MethodType mx my returnType) types localTypes omt = do
+  (expr', exprTypes) <- inferExpr expr (MethodType mx my returnType) types localTypes omt
+  if Prelude.elem returnType exprTypes
+    then Right (Hanging expr', localTypes) else Left "Return Type does not match"
 checkStatement (ReturnStmt ReturnUnit) _ (MethodType _ _ returnType) types localTypes omt =
   case returnType of
     (Primitive UnitPrimType) -> Right (ReturnStmt (ReturnUnit), localTypes)
@@ -152,6 +156,13 @@ checkStatement (IfStmt ifExpr) restStmts methodType types localTypes omt = do
         thenBody' <- checkStatements thenBody methodType types localTypes omt []
         ifExpr' <- checkIfExpr ifExpr
         Right $ IfExpr test' thenBody' (Just (Right ifExpr'))
+checkStatement (AssignmentStmt expr1 expr2) _ methodType types localTypes omt = do
+  (expr1', expr1Types) <- inferExpr expr1 methodType types localTypes omt
+  (expr2', expr2Types) <- inferExpr expr2 methodType types localTypes omt
+  if expr2Types `contains` expr1Types then
+    Right (AssignmentStmt expr1' expr2', localTypes)
+    else
+    Left "Types in assignment don't match"
 checkStatement stmt restStmts methodType types localTypes omt = error "TODO"
 
 
