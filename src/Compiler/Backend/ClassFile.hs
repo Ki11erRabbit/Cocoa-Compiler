@@ -71,6 +71,7 @@ data ClassFile = ClassFile
   , superInfo :: Integer
   , classFlags :: Int8
   , constantPool :: [PoolEntry]
+  , interfaces :: [InterfaceInfo]
   , fields :: [FieldInfo]
   , methods :: [MethodInfo]
   , strings :: [Integer]
