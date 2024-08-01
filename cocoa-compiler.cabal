@@ -36,6 +36,9 @@ library
                      , Compiler.SSA.File
                      , Compiler.SSA.Method
                      , Compiler.SSA.Statement
+                     , Compiler.Backend.ClassFile
+                     , Compiler.Backend.Bytecode
+                     , Compiler.Backend
   build-depends:       base >= 4.7 && < 5
                      , megaparsec
                      , parser-combinators
