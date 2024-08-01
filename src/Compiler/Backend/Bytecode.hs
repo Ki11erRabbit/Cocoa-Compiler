@@ -60,3 +60,4 @@ data Bytecode = Pop
   | NewString Integer
   | Breakpoint
   | Nop
+  deriving (Show, Eq)

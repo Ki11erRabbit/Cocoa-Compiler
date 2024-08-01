@@ -1,7 +1,7 @@
 module Compiler.Backend.ClassFile where
 
 import Compiler.Backend.Bytecode
-
+import Data.Int
 
 data PoolEntry = U8Entry Int8
   | I8Entry Int8
@@ -16,9 +16,15 @@ data PoolEntry = U8Entry Int8
   | CharEntry Char
   | StringEntry String
   | ClassInfoEntry ClassInfo
-  | Method [Bytecode]
+  | MethodEntry MethodEntryType
   | TypeInfoEntry TypeInfo
   | RedirectEntry Integer
+  deriving (Show, Eq)
+
+data MethodEntryType = NativeMethodEntry Int
+  | BytecodeMethodEntry [Bytecode]
+  | ForeignMethodEntry Int
+  | DummyMethodEntry
   deriving (Show, Eq)
 
 data ClassInfo = ClassInfo
@@ -42,21 +48,22 @@ data TypeInfo = UnitType
   | F32Type
   | F64Type
   | CharType
+  | BoolType
   | StringType
   | ArrayType TypeInfo
   | ObjectType Integer
-  | MethodType [TypeInfo] TypeInfo
+  | MethodType [Int] Int
   deriving (Show, Eq)
 
 data FieldInfo = FieldInfo
   { fieldName :: Integer
-  , flags :: Int8
+  , fieldFlags :: Int8
   , fieldType :: Integer
   } deriving (Show, Eq)
 
 data MethodInfo = MethodInfo
   { methodName :: Integer
-  , flags :: Int8
+  , methodFlags :: Int8
   , methodType :: Integer
   , location :: Integer
   } deriving (Show, Eq)
