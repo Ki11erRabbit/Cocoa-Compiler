@@ -28,15 +28,15 @@ data Bytecode = Pop
   | Less
   | Convert OpType
   | BinaryConvert OpType
-  | GoTo Int
-  | If Int
-  | IfNot Int
-  | IfGreater Int
-  | IfGreaterEqual Int
-  | IfLess Int
-  | IfLessEqual Int
-  | IfNull Int
-  | IfNotNull Int
+  | GoTo Integer
+  | If Integer
+  | IfNot Integer
+  | IfGreater Integer
+  | IfGreaterEqual Integer
+  | IfLess Integer
+  | IfLessEqual Integer
+  | IfNull Integer
+  | IfNotNull Integer
   | InvokeVirtual Integer
   | InvokeVirtualTail Integer
   | InvokeStatic Integer Integer

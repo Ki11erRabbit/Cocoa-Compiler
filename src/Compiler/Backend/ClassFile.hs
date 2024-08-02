@@ -23,7 +23,6 @@ data PoolEntry = U8Entry Int8
 
 data MethodEntryType = NativeMethodEntry Int
   | BytecodeMethodEntry [Bytecode]
-  | ForeignMethodEntry Int
   | DummyMethodEntry
   deriving (Show, Eq)
 
