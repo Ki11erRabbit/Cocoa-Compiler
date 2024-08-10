@@ -16,29 +16,7 @@ extra-source-files:  README.md
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Compiler
-                     , Compiler.Ast
-                     , Compiler.Ast.Class
-                     , Compiler.Ast.File
-                     , Compiler.Ast.Method
-                     , Compiler.Ast.Shared
-                     , Compiler.Ast.Statement
-                     , Compiler.Parser
-                     , Compiler.Parser.Shared
-                     , Compiler.Parser.Statement
-                     , Compiler.Parser.Method
-                     , Compiler.Parser.Class
-                     , Compiler.Parser.File
-                     , Compiler.FileGraph
-                     , Compiler.TypeChecker
-                     , Compiler.SSA
-                     , Compiler.SSA.Class
-                     , Compiler.SSA.File
-                     , Compiler.SSA.Method
-                     , Compiler.SSA.Statement
-                     , Compiler.Backend.ClassFile
-                     , Compiler.Backend.Bytecode
-                     , Compiler.Backend
+  exposed-modules:     Parser
   build-depends:       base >= 4.7 && < 5
                      , megaparsec
                      , parser-combinators
