@@ -17,36 +17,36 @@ parseStatement = lexeme $ spanner $ parseExprStmt <|> parseHangingStmt
 
 parseExprStmt :: Parser Statement
 parseExprStmt = do
-  out <- lexeme $ parseExpr
+  out <- lexeme $ spanner $ parseExpr
   _ <- char ';'
   return $ ExpressionStmt out
 
 parseHangingStmt :: Parser Statement
 parseHangingStmt = do
-  out <- lexeme $ parseExpr
+  out <- lexeme $ spanner $ parseExpr
   return $ HangingStmt out
 
 
 
 
-parseExpr :: Parser (Spanned Expression)
+parseExpr :: Parser Expression
 parseExpr = do
-  expr <- lexeme $ parseSimpleExpr <|> parseReturnExpr
+  expr <- lexeme $ (parseSimpleExpr <|> parseReturnExpr)
   return expr
 
-parseReturnExpr :: Parser (Spanned Expression)
+parseReturnExpr :: Parser Expression
 parseReturnExpr = do
   _ <- lexeme $ string "return"
   body <- optional parseExpr
-  return ReturnExpr body
+  return $ ReturnExpr body
 
 
-parseSimpleExpr :: Parser (Spanned Expression)
+parseSimpleExpr :: Parser Expression
 parseSimpleExpr = do
-  expr <- lexeme $ parseLiteralExpr <|> (parseOpExpr parseExpr)
+  expr <- lexeme $ (parseLiteralExpr <|> (parseOpExpr parseExpr))
   return expr
 
-parseOpExpr :: Parser(Spanned Expression) -> Parser (Spanned Expression)
+parseOpExpr :: Parser Expression -> Parser Expression
 parseOpExpr p = makeExprParser p opTable
   where
     opTable = [[postfix "?" (PostfixExpr TryOp)]
@@ -61,15 +61,15 @@ parseOpExpr p = makeExprParser p opTable
               ,[binary "&&" (BinaryExpr LogicalAnd)]
               ,[binary "||" (BinaryExpr LogicalOr)]
               ,[binary ".." (BinaryExpr ExclusiveRangeOp), binary "..=" (BinaryExpr InclusiveRangeOp)]]
-    binary name f = InfixL (f <$ lexeme (string name))
-    prefix name f = Prefix (f <$ lexeme (string name))
-    postfix name f = Postfix (f <$ lexeme (string name))
+    binary name f = InfixL (do _ <- string name; _ <- skipParser; return f)
+    prefix name f = Prefix (do _ <- string name; _ <- skipParser; return f)
+    postfix name f = Postfix (do _ <- string name; _ <- skipParser; return f)
       
     
 
-parseLiteralExpr :: Parser (Spanned Expression)
+parseLiteralExpr :: Parser Expression
 parseLiteralExpr = do
-  out <- spanner $ parseLiteral
+  out <- parseLiteral
   return out
 
 parseLiteral :: Parser Literal

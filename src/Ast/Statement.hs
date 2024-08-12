@@ -8,13 +8,13 @@ data Statement = ExpressionStmt (Spanned Expression)
 
 
 data Expression = SimpleExpr SimpleExpression
-               | ReturnExpr (Maybe (Spanned Expression))
+               | ReturnExpr (Maybe Expression)
                deriving (Show, Eq)
 
 
-data SimpleExpression = BinaryExpr BinaryOp (Spanned Expression) (Spanned Expression)
-                      | PrefixExpr PrefixOp (Spanned Expression)
-                      | PostfixExpr PostfixOp (Spanned Expression)
+data SimpleExpression = BinaryExpr BinaryOp Expression Expression
+                      | PrefixExpr PrefixOp Expression
+                      | PostfixExpr PostfixOp Expression
                       | LiteralExpr Literal
                       deriving (Show, Eq)
 
