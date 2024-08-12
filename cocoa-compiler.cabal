@@ -16,7 +16,10 @@ extra-source-files:  README.md
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Parser
+  exposed-modules:     Parser.Shared
+                     , Parser.Statement
+                     , Ast.Statement
+                     , Ast.Shared
   build-depends:       base >= 4.7 && < 5
                      , megaparsec
                      , parser-combinators
